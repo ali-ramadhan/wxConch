@@ -14,11 +14,12 @@ headers = {
 owm_forecast_url = "http://api.openweathermap.org/data/2.5/forecast"
 owm_params = {
     'APPID': "c7f3d1b2657114c4c2ba33b64b8fa3a7",
-    'id': 5074472,  # City ID for Omaha, NE
+    'id': 4930956,  # City ID for Boston
     'units': "imperial"
 }
 
 owm_response = requests.get(owm_forecast_url, params=owm_params)
+print(owm_response)
 
 owm_forecast = json.loads(owm_response.content)
 

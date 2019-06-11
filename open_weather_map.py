@@ -1,53 +1,56 @@
 from datetime import datetime
 import requests
+import logging
 import json
 
-import matplotlib.pyplot as plt
+logging.basicConfig(format="[%(asctime)s.%(msecs)03d] %(funcName)s:%(levelname)s: %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S")
 
 # Request headers
-headers = {
-    'User-Agent': 'wxConch (Python3.7)',
-    'From': 'alir@mit.edu'
+OWM_HEADERS = {
+    "User-Agent": "wxConch (Python3.7) https://github.com/ali-ramadhan/wxConch",
+    "From": "alir@mit.edu"
 }
 
 # OpenWeatherMap API
-owm_forecast_url = "http://api.openweathermap.org/data/2.5/forecast"
-owm_params = {
-    'APPID': "c7f3d1b2657114c4c2ba33b64b8fa3a7",
-    'id': 4930956,  # City ID for Boston
-    'units': "imperial"
-}
+OWM_FORECAST_URL = "http://api.openweathermap.org/data/2.5/forecast"
 
-owm_response = requests.get(owm_forecast_url, params=owm_params)
-print(owm_response)
 
-owm_forecast = json.loads(owm_response.content)
+def open_weather_map_temp_time_series(city_id):
+    req_params = {
+        'APPID': "c7f3d1b2657114c4c2ba33b64b8fa3a7",
+        'id': city_id,
+        'units': "imperial"
+    }
 
-city_id = owm_forecast['city']['id']
-city_name = owm_forecast['city']['name']
-city_lat = owm_forecast['city']['coord']['lat']
-city_lon = owm_forecast['city']['coord']['lon']
-city_country = owm_forecast['city']['country']
+    response = requests.get(OWM_FORECAST_URL, params=req_params)
 
-print("{:s}, {:s} ({:.4f}°N, {:.4f}°E) [ID: {:d}] ".format(city_name, city_country, city_lat, city_lon, city_id))
+    if response.status_code != 200:
+        response.raise_for_status()
 
-ts = []
-Ts = []
-Ts_min = []
-Ts_max = []
+    forecast = json.loads(response.content)
 
-for i, forecast_entry in enumerate(owm_forecast['list']):
-    t_txt = forecast_entry['dt_txt']
-    T = forecast_entry['main']['temp']
-    T_min = forecast_entry['main']['temp_min']
-    T_max = forecast_entry['main']['temp_max']
+    city_id = forecast['city']['id']
+    city_name = forecast['city']['name']
+    city_lat = forecast['city']['coord']['lat']
+    city_lon = forecast['city']['coord']['lon']
+    city_country = forecast['city']['country']
 
-    ts.append(datetime.strptime(t_txt, "%Y-%m-%d %H:%M:%S"))
-    Ts.append(T)
-    Ts_min.append(T_min)
-    Ts_max.append(T_max)
+    logging.info("OpenWeatherMap: {:s}, {:s} ({:.4f}°N, {:.4f}°E) [ID: {:d}] "
+                 .format(city_name, city_country, city_lat, city_lon, city_id))
 
-    print("{:s} T={:.1f}°F, T_min={:.1f}°F, T_max={:.1f}°F".format(t_txt, T, T_min, T_max))
+    times = []
+    temps = []
 
-plt.plot(ts, Ts)
-plt.show()
+    for i, forecast_entry in enumerate(forecast['list']):
+        t_txt = forecast_entry['dt_txt']
+        T = forecast_entry['main']['temp']
+        T_min = forecast_entry['main']['temp_min']
+        T_max = forecast_entry['main']['temp_max']
+
+        times.append(datetime.strptime(t_txt, "%Y-%m-%d %H:%M:%S"))
+        temps.append(T)
+
+        logging.info("{:s} T={:.1f}°F, T_min={:.1f}°F, T_max={:.1f}°F".format(t_txt, T, T_min, T_max))
+
+    return times, temps

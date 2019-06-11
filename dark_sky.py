@@ -1,7 +1,7 @@
-from datetime import datetime
-import requests
-import logging
 import json
+import logging
+import requests
+from datetime import datetime
 
 logging.basicConfig(format="[%(asctime)s.%(msecs)03d] %(funcName)s:%(levelname)s: %(message)s",
                     datefmt="%Y-%m-%d %H:%M:%S")
@@ -12,7 +12,6 @@ DARK_SKY_KEY = "81c07948c439765d630c4c60fc56634e"
 
 def dark_sky_temp_time_series(lat, lon):
     forecast_url = "https://api.darksky.net/forecast/" + DARK_SKY_KEY + "/" + str(lat) + "," + str(lon)
-
     response = requests.get(forecast_url)
     
     if response.status_code != 200:

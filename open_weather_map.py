@@ -1,7 +1,7 @@
-from datetime import datetime
-import requests
-import logging
 import json
+import logging
+import requests
+from datetime import datetime
 
 logging.basicConfig(format="[%(asctime)s.%(msecs)03d] %(funcName)s:%(levelname)s: %(message)s",
                     datefmt="%Y-%m-%d %H:%M:%S")

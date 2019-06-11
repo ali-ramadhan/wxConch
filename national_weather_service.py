@@ -1,43 +1,47 @@
 import json
+import logging
 import requests
+from datetime import datetime
+from dateutil.parser import parse
 
-import matplotlib.pyplot as plt
+logging.basicConfig(format="[%(asctime)s.%(msecs)03d] %(funcName)s:%(levelname)s: %(message)s",
+                    datefmt="%Y-%m-%d %H:%M:%S")
 
-stations = requests.get("https://api.weather.gov/stations")
 
-tmp = json.loads(stations.content)
-for s in tmp['features']:
-    if s['properties']['stationIdentifier'] == "KBOS":
-        print(s)
+def nws_temp_time_series(lat, lon):
+    api_url = "https://api.weather.gov/points/" + str(lat) + "," + str(lon)
+    response = requests.get(api_url)
 
-point = requests.get("https://api.weather.gov/points/42.362389,-71.091083")  # 42.362389, -71.091083
-pointj = json.loads(point.content)
+    if response.status_code != 200:
+        response.raise_for_status()
 
-wfo = pointj['properties']['cwa']
-X = pointj['properties']['gridX']
-Y = pointj['properties']['gridY']
-forecast_url = pointj['properties']['forecast']
-hourly_forecast_url = pointj['properties']['forecastHourly']
-print("WFO:{:s}, (X,Y)=({:d},{:d})".format(wfo, X, Y))
-print("GET {:s}".format(hourly_forecast_url))
+    point = json.loads(response.content)
 
-hourly = requests.get(hourly_forecast_url)
-hourlyj = json.loads(hourly.content)
+    wfo = point['properties']['cwa']
+    X = point['properties']['gridX']
+    Y = point['properties']['gridY']
+    forecast_url = point['properties']['forecast']
+    hourly_forecast_url = point['properties']['forecastHourly']
 
-ts = []
-Ts = []
+    logging.info("National Weather Service: WFO={:s}, (X,Y)=({:d},{:d})".format(wfo, X, Y))
+    logging.info("Forecast URL: {:s}".format(forecast_url))
+    logging.info("Hourly forecast URL: {:s}".format(hourly_forecast_url))
 
-for i, fe in enumerate(hourlyj['properties']['periods']):
-    time = fe['startTime']
-    T = fe['temperature']
-    wind_speed = fe['windSpeed']
-    wind_dir = fe['windDirection']
-    description = fe['shortForecast']
-    print("{:s} {:d}F {:s} {:s} ({:s})".format(time, T, wind_speed, wind_dir, description))
+    response = requests.get(hourly_forecast_url)
+    hourly_forecast = json.loads(response.content)
 
-    ts.append(time)
-    Ts.append(T)
+    times = []
+    temps = []
 
-plt.plot(ts, Ts)
-plt.show()
+    for i, fe in enumerate(hourly_forecast['properties']['periods']):
+        time = fe['startTime']
+        T = fe['temperature']
+        wind_speed = fe['windSpeed']
+        wind_dir = fe['windDirection']
+        description = fe['shortForecast']
+
+        times.append(parse(time))
+        temps.append(T)
+
+    return times, temps
 

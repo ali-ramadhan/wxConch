@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 FORECAST_HOURS = 18
 SUBHOURLY = 4
 
+
 def hrrr_file_url(date, CC, FF):
     """
     HRRR 2D surface data file names are hrrr.tCCz.wrfsubhfFF.grib2 where CC is the model cycle runtime (i.e. 00, 01,
@@ -25,9 +26,7 @@ def hrrr_file_url(date, CC, FF):
     return url, filename
 
 
-def hrrr_temp_time_series(slat, slon):
-    CC = 10
-
+def hrrr_temp_time_series(slat, slon, CC=10):
     today = datetime.utcnow().date()
     today_dt = datetime.combine(today, datetime.min.time())
 
@@ -37,6 +36,7 @@ def hrrr_temp_time_series(slat, slon):
 
     # Get lat, lon index from first forecast hour file.
     _, FF0_filename = hrrr_file_url(datetime.now(), CC, 0)
+    logger.info("Reading data from {:s}...".format(FF0_filename))
     ds0 = xr.open_dataset(FF0_filename, engine="pynio")
 
     lats = ds0["gridlat_0"].data
@@ -65,6 +65,7 @@ def hrrr_temp_time_series(slat, slon):
     # Get temperature time series.
     for FF in range(1, FORECAST_HOURS+1):
         _, FF_filename = hrrr_file_url(datetime.now(), CC, FF)
+        logger.info("Reading data from {:s}...".format(FF_filename))
         ds = xr.open_dataset(FF_filename, engine="pynio")
 
         for subhourly_idx in range(SUBHOURLY):
@@ -72,9 +73,4 @@ def hrrr_temp_time_series(slat, slon):
             temps.append(T)
             times.append(times[-1] + timedelta(minutes=15))
 
-    logger.info("times = {:}".format(times))
-    logger.info("temps = {:}".format(temps))
-
-
-if __name__ == "__main__":
-    hrrr_temp_time_series(42.362389, -71.091083)
+    return times, temps

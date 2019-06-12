@@ -1,7 +1,6 @@
 import json
 import logging
 import requests
-from datetime import datetime
 from dateutil.parser import parse
 
 logging.basicConfig(format="[%(asctime)s.%(msecs)03d] %(funcName)s:%(levelname)s: %(message)s",

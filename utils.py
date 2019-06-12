@@ -1,8 +1,8 @@
 import os
 import time
 import math
-import logging
 import requests
+import logging.config
 from datetime import datetime
 
 import smtplib, ssl

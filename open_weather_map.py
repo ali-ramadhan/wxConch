@@ -1,9 +1,8 @@
 import json
 import requests
+import logging.config
 from datetime import datetime
 
-# Configure logger first before importing any sub-module that depend on the logger being already configured.
-import logging.config
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-import logging
+import logging.config
 from datetime import datetime
 
 import xarray as xr

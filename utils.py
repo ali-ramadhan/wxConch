@@ -105,7 +105,7 @@ def download_images(url, filename=None):
     return image_links
 
 
-def send_email(send_from, send_to, subject, text, files=None):
+def send_email(send_from, send_to, subject, text, files=None, gmail="wxconch.forecast@gmail.com"):
     assert isinstance(send_to, list)
 
     msg = MIMEMultipart()
@@ -125,11 +125,11 @@ def send_email(send_from, send_to, subject, text, files=None):
         msg.attach(part)
 
     port = 465  # For SSL
-    password = input("Gmail password for {:s}: ".format(send_from))
+    password = input("Gmail password for {:s}: ".format(gmail))
 
     # Create a secure SSL context
     context = ssl.create_default_context()
 
     with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
-        server.login(send_from, password)
+        server.login(gmail, password)
         server.sendmail(send_from, send_to, msg.as_string())

@@ -23,24 +23,27 @@ def hrrr_file_url(date, CC, FF):
     return url, filename
 
 
-hrrr_url, hrrr_filename = hrrr_file_url(datetime.now(), 10, 1)
-download_file(hrrr_url, hrrr_filename)
+def hrrr_temp_time_series(slat, slon):
+    hrrr_url, hrrr_filename = hrrr_file_url(datetime.now(), 10, 1)
+    download_file(hrrr_url, hrrr_filename)
 
-ds = xr.open_dataset(hrrr_filename, engine="pynio")
+    ds = xr.open_dataset(hrrr_filename, engine="pynio")
 
-lats = ds["gridlat_0"].data
-lons = ds["gridlon_0"].data
+    lats = ds["gridlat_0"].data
+    lons = ds["gridlon_0"].data
 
-slat, slon = 42.362389, -71.091083
+    abslat = abs(lats - slat)
+    abslon = abs(lons - slon)
+    c = maximum(abslon, abslat)
 
-abslat = abs(lats - slat)
-abslon = abs(lons - slon)
-c = maximum(abslon, abslat)
+    x_idx, y_idx = where(c == min(c))
+    x_idx, y_idx = x_idx[0], y_idx[0]
 
-x_idx, y_idx = where(c == min(c))
-x_idx, y_idx = x_idx[0], y_idx[0]
+    clat, clon = lats[x_idx, y_idx], lons[x_idx, y_idx]
 
-clat, clon = lats[x_idx, y_idx], lons[x_idx, y_idx]
+    logger.info("Station (lat, lon) = ({:.6f}, {:.6f})".format(slat, slon))
+    logger.info("Closest (lat, lon) = ({:.6f}, {:.6f})".format(clat, clon))
 
-logger.info("Station (lat, lon) = ({:.6f}, {:.6f})".format(slat, slon))
-logger.info("Closest (lat, lon) = ({:.6f}, {:.6f})".format(clat, clon))
+
+if __name__ == "__main__":
+    hrrr_temp_time_series(42.362389, -71.091083)

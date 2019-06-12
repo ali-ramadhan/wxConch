@@ -1,13 +1,14 @@
-import logging
 from datetime import datetime
 
 import xarray as xr
 from numpy import abs, maximum, min, where
 
-from utils import download_file
+# Configure logger first before importing any sub-module that depend on the logger being already configured.
+import logging.config
+logging.config.fileConfig("logging.ini")
+logger = logging.getLogger(__name__)
 
-logging.basicConfig(format="[%(asctime)s.%(msecs)03d] %(funcName)s:%(levelname)s: %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S")
+from utils import download_file
 
 
 def hrrr_file_url(date, CC, FF):
@@ -41,5 +42,5 @@ x_idx, y_idx = x_idx[0], y_idx[0]
 
 clat, clon = lats[x_idx, y_idx], lons[x_idx, y_idx]
 
-logging.info("Station (lat, lon) = ({:.6f}, {:.6f})".format(slat, slon))
-logging.info("Closest (lat, lon) = ({:.6f}, {:.6f})".format(clat, clon))
+logger.info("Station (lat, lon) = ({:.6f}, {:.6f})".format(slat, slon))
+logger.info("Closest (lat, lon) = ({:.6f}, {:.6f})".format(clat, clon))

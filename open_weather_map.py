@@ -1,10 +1,11 @@
 import json
-import logging
 import requests
 from datetime import datetime
 
-logging.basicConfig(format="[%(asctime)s.%(msecs)03d] %(funcName)s:%(levelname)s: %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S")
+# Configure logger first before importing any sub-module that depend on the logger being already configured.
+import logging.config
+logging.config.fileConfig("logging.ini")
+logger = logging.getLogger(__name__)
 
 # Request headers
 OWM_HEADERS = {
@@ -36,7 +37,7 @@ def open_weather_map_temp_time_series(city_id):
     city_lon = forecast['city']['coord']['lon']
     city_country = forecast['city']['country']
 
-    logging.info("OpenWeatherMap: {:s}, {:s} ({:.4f}°N, {:.4f}°E) [ID: {:d}] "
+    logger.info("OpenWeatherMap: {:s}, {:s} ({:.4f}°N, {:.4f}°E) [ID: {:d}] "
                  .format(city_name, city_country, city_lat, city_lon, city_id))
 
     times = []
@@ -51,6 +52,6 @@ def open_weather_map_temp_time_series(city_id):
         times.append(datetime.strptime(t_txt, "%Y-%m-%d %H:%M:%S"))
         temps.append(T)
 
-        logging.info("{:s} T={:.1f}°F, T_min={:.1f}°F, T_max={:.1f}°F".format(t_txt, T, T_min, T_max))
+        logger.info("{:s} T={:.1f}°F, T_min={:.1f}°F, T_max={:.1f}°F".format(t_txt, T, T_min, T_max))
 
     return times, temps

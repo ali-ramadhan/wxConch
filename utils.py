@@ -14,6 +14,11 @@ from email.utils import COMMASPACE, formatdate
 
 from tqdm import tqdm
 
+# Configure logger first before importing any sub-module that depend on the logger being already configured.
+import logging.config
+logging.config.fileConfig("logging.ini")
+logger = logging.getLogger(__name__)
+
 
 HEADERS = {
     "User-Agent": "wxConch (Python3.7) https://github.com/ali-ramadhan/wxConch",
@@ -73,7 +78,7 @@ def download_file(url, local_filepath, max_retries=1, retry_timeout=60):
 
     if os.path.isfile(local_filepath):
         if os.path.getsize(local_filepath) == file_size:
-            logging.info("{:s} ({:,d} bytes) already downloaded. Skipping.".format(local_filepath, file_size))
+            logger.info("{:s} ({:,d} bytes) already downloaded. Skipping.".format(local_filepath, file_size))
             return
 
     while True:
@@ -87,11 +92,11 @@ def download_file(url, local_filepath, max_retries=1, retry_timeout=60):
                         f.write(chunk)
             break
         except Exception as ex:
-            logging.error(ex)
-            logging.info("[{:}] Sleeping for {:s} seconds before retry...\n".format(str(datetime.now()), retry_timeout))
+            logger.error(ex)
+            logger.info("[{:}] Sleeping for {:s} seconds before retry...\n".format(str(datetime.now()), retry_timeout))
             time.sleep(retry_timeout)
 
     if file_size != 0 and wrote != file_size:
-        logging.error("Total file size does not match bytes written!")
+        logger.error("Total file size does not match bytes written!")
 
     return

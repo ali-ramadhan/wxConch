@@ -1,10 +1,11 @@
 import json
-import logging
 import requests
 from datetime import datetime
 
-logging.basicConfig(format="[%(asctime)s.%(msecs)03d] %(funcName)s:%(levelname)s: %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S")
+# Configure logger first before importing any sub-module that depend on the logger being already configured.
+import logging.config
+logging.config.fileConfig("logging.ini")
+logger = logging.getLogger(__name__)
 
 # Dark Sky API
 DARK_SKY_KEY = "81c07948c439765d630c4c60fc56634e"
@@ -23,7 +24,7 @@ def dark_sky_temp_time_series(lat, lon):
     city_lon = forecast['longitude']
     city_tz = forecast['timezone']
 
-    logging.info("Dark Sky: (lat, lon) = ({:.2f}, {:.2f}), timezone={:}".format(city_lat, city_lon, city_tz))
+    logger.info("Dark Sky: (lat, lon) = ({:.2f}, {:.2f}), timezone={:}".format(city_lat, city_lon, city_tz))
 
     currently = forecast['currently']
     current_time = currently['time']

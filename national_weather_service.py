@@ -1,10 +1,11 @@
 import json
-import logging
 import requests
 from dateutil.parser import parse
 
-logging.basicConfig(format="[%(asctime)s.%(msecs)03d] %(funcName)s:%(levelname)s: %(message)s",
-                    datefmt="%Y-%m-%d %H:%M:%S")
+# Configure logger first before importing any sub-module that depend on the logger being already configured.
+import logging.config
+logging.config.fileConfig("logging.ini")
+logger = logging.getLogger(__name__)
 
 
 def nws_temp_time_series(lat, lon):
@@ -22,9 +23,9 @@ def nws_temp_time_series(lat, lon):
     forecast_url = point['properties']['forecast']
     hourly_forecast_url = point['properties']['forecastHourly']
 
-    logging.info("National Weather Service: WFO={:s}, (X,Y)=({:d},{:d})".format(wfo, X, Y))
-    logging.info("Forecast URL: {:s}".format(forecast_url))
-    logging.info("Hourly forecast URL: {:s}".format(hourly_forecast_url))
+    logger.info("National Weather Service: WFO={:s}, (X,Y)=({:d},{:d})".format(wfo, X, Y))
+    logger.info("Forecast URL: {:s}".format(forecast_url))
+    logger.info("Hourly forecast URL: {:s}".format(hourly_forecast_url))
 
     response = requests.get(hourly_forecast_url)
     hourly_forecast = json.loads(response.content)

@@ -4,6 +4,8 @@ import math
 import requests
 import logging.config
 from datetime import datetime
+from urllib.request import urlopen, urlretrieve
+from urllib.parse import urlparse, urljoin
 
 import smtplib, ssl
 from os.path import basename
@@ -12,6 +14,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 
+from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
@@ -74,7 +77,35 @@ def download_file(url, local_filepath, max_retries=1, retry_timeout=60):
     return
 
 
-def send_email(send_from, send_to, subject, text, files=None):
+def make_soup(url):
+    html = urlopen(url).read()
+    return BeautifulSoup(html, features="lxml")
+
+
+def download_images(url, filename=None):
+    soup = make_soup(url)
+
+    # Make a list of bs4 element tags.
+    images = [img for img in soup.findAll("img")]
+    logger.debug("{:s}: {:d} images found.".format(url, len(images)))
+
+    # Compile our unicode list of image links.
+    image_links = [img.get("src") for img in images]
+
+    for img_url in image_links:
+        if filename is None:
+            filename = img_url.split('/')[-1]
+
+        url_parts = urlparse(url)
+        real_img_url = url_parts.scheme + "://" + url_parts.netloc + img_url
+
+        logger.debug("Downloading image: {:s} -> {:s}".format(real_img_url, filename))
+        urlretrieve(real_img_url, filename)
+
+    return image_links
+
+
+def send_email(send_from, send_to, subject, text, files=None, gmail="wxconch.forecast@gmail.com"):
     assert isinstance(send_to, list)
 
     msg = MIMEMultipart()
@@ -94,11 +125,11 @@ def send_email(send_from, send_to, subject, text, files=None):
         msg.attach(part)
 
     port = 465  # For SSL
-    password = input("Gmail password for {:s}: ".format(send_from))
+    password = input("Gmail password for {:s}: ".format(gmail))
 
     # Create a secure SSL context
     context = ssl.create_default_context()
 
     with smtplib.SMTP_SSL("smtp.gmail.com", port, context=context) as server:
-        server.login(send_from, password)
+        server.login(gmail, password)
         server.sendmail(send_from, send_to, msg.as_string())

@@ -4,6 +4,8 @@ import math
 import requests
 import logging.config
 from datetime import datetime
+from urllib.request import urlopen, urlretrieve
+from urllib.parse import urlparse, urljoin
 
 import smtplib, ssl
 from os.path import basename
@@ -12,6 +14,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 
+from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
@@ -72,6 +75,34 @@ def download_file(url, local_filepath, max_retries=1, retry_timeout=60):
         logger.error("Total file size does not match bytes written!")
 
     return
+
+
+def make_soup(url):
+    html = urlopen(url).read()
+    return BeautifulSoup(html, features="lxml")
+
+
+def download_images(url, filename=None):
+    soup = make_soup(url)
+
+    # Make a list of bs4 element tags.
+    images = [img for img in soup.findAll("img")]
+    logger.debug("{:s}: {:d} images found.".format(url, len(images)))
+
+    # Compile our unicode list of image links.
+    image_links = [img.get("src") for img in images]
+
+    for img_url in image_links:
+        if filename is None:
+            filename = img_url.split('/')[-1]
+
+        url_parts = urlparse(url)
+        real_img_url = url_parts.scheme + "://" + url_parts.netloc + img_url
+
+        logger.debug("Downloading image: {:s} -> {:s}".format(real_img_url, filename))
+        urlretrieve(real_img_url, filename)
+
+    return image_links
 
 
 def send_email(send_from, send_to, subject, text, files=None):

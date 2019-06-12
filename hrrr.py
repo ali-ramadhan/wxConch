@@ -19,7 +19,7 @@ def hrrr_file_url(date, CC, FF):
     date_str = str(date.year) + str(date.month) + str(date.day)
     filename = "hrrr.t" + str(CC) + "z.wrfsubhf" + str(FF) + ".grib2"
     url = "https://ftp.ncep.noaa.gov/data/nccf/com/hrrr/prod/hrrr." + date_str + "/conus/" + filename
-    return url
+    return url, filename
 
 
 hrrr_url, hrrr_filename = hrrr_file_url(datetime.now(), 10, 1)

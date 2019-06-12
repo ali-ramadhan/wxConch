@@ -100,7 +100,8 @@ def download_images(url, filename=None):
         real_img_url = url_parts.scheme + "://" + url_parts.netloc + img_url
 
         logger.debug("Downloading image: {:s} -> {:s}".format(real_img_url, filename))
-        urlretrieve(real_img_url, filename)
+        # urlretrieve(real_img_url, filename)
+        download_file(real_img_url, filename)
 
     return image_links
 

@@ -51,6 +51,6 @@ def open_weather_map_temp_time_series(city_id):
         times.append(datetime.strptime(t_txt, "%Y-%m-%d %H:%M:%S"))
         temps.append(T)
 
-        logger.info("{:s} T={:.1f}°F, T_min={:.1f}°F, T_max={:.1f}°F".format(t_txt, T, T_min, T_max))
+        logger.debug("{:s} T={:.1f}°F, T_min={:.1f}°F, T_max={:.1f}°F".format(t_txt, T, T_min, T_max))
 
     return times, temps

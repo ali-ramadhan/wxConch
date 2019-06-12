@@ -10,6 +10,8 @@ from utils import download_file, K2F
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
+FORECAST_HOURS = 18
+SUBHOURLY = 4
 
 def hrrr_file_url(date, CC, FF):
     """
@@ -26,10 +28,11 @@ def hrrr_file_url(date, CC, FF):
 def hrrr_temp_time_series(slat, slon):
     CC = 10
 
-    hrrr_date = datetime.now()
+    today = datetime.utcnow().date()
+    today_dt = datetime.combine(today, datetime.min.time())
 
-    for FF in range(1):
-        hrrr_url, hrrr_filename = hrrr_file_url(hrrr_date, CC, FF)
+    for FF in range(FORECAST_HOURS+1):
+        hrrr_url, hrrr_filename = hrrr_file_url(today, CC, FF)
         download_file(hrrr_url, hrrr_filename)
 
     # Get lat, lon index from first forecast hour file.
@@ -57,18 +60,19 @@ def hrrr_temp_time_series(slat, slon):
     # Get first temperature data point.
     T = K2F(ds0["TMP_P0_L103_GLC0"].data[x_idx, y_idx])
     temps.append(T)
-    times.append(hrrr_date + timedelta(hours=CC))  # UTC time
+    times.append(today_dt + timedelta(hours=CC))  # UTC time
 
     # Get temperature time series.
-    for FF in [1]:
+    for FF in range(1, FORECAST_HOURS+1):
         _, FF_filename = hrrr_file_url(datetime.now(), CC, FF)
         ds = xr.open_dataset(FF_filename, engine="pynio")
 
-        for subhourly_idx in range(4):
+        for subhourly_idx in range(SUBHOURLY):
             T = K2F(ds["TMP_P0_L103_GLC0"].data[subhourly_idx, x_idx, y_idx])
             temps.append(T)
             times.append(times[-1] + timedelta(minutes=15))
 
+    logger.info("times = {:}".format(times))
     logger.info("temps = {:}".format(temps))
 
 

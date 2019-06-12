@@ -1,5 +1,5 @@
 import logging.config
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import xarray as xr
 from numpy import abs, maximum, min, where
@@ -24,13 +24,20 @@ def hrrr_file_url(date, CC, FF):
 
 
 def hrrr_temp_time_series(slat, slon):
-    hrrr_url, hrrr_filename = hrrr_file_url(datetime.now(), 10, 1)
-    download_file(hrrr_url, hrrr_filename)
+    CC = 10
 
-    ds = xr.open_dataset(hrrr_filename, engine="pynio")
+    hrrr_date = datetime.now()
 
-    lats = ds["gridlat_0"].data
-    lons = ds["gridlon_0"].data
+    for FF in range(1):
+        hrrr_url, hrrr_filename = hrrr_file_url(hrrr_date, CC, FF)
+        download_file(hrrr_url, hrrr_filename)
+
+    # Get lat, lon index from first forecast hour file.
+    _, FF0_filename = hrrr_file_url(datetime.now(), CC, 0)
+    ds0 = xr.open_dataset(FF0_filename, engine="pynio")
+
+    lats = ds0["gridlat_0"].data
+    lons = ds0["gridlon_0"].data
 
     abslat = abs(lats - slat)
     abslon = abs(lons - slon)
@@ -44,8 +51,25 @@ def hrrr_temp_time_series(slat, slon):
     logger.info("Station (lat, lon) = ({:.6f}, {:.6f})".format(slat, slon))
     logger.info("Closest (lat, lon) = ({:.6f}, {:.6f})".format(clat, clon))
 
-    T = K2F(ds["TMP_P0_L103_GLC0"].data[x_idx, y_idx])
-    logger.info("T = {:}F".format(T))
+    times = []
+    temps = []
+
+    # Get first temperature data point.
+    T = K2F(ds0["TMP_P0_L103_GLC0"].data[x_idx, y_idx])
+    temps.append(T)
+    times.append(hrrr_date + timedelta(hours=CC))  # UTC time
+
+    # Get temperature time series.
+    for FF in [1]:
+        _, FF_filename = hrrr_file_url(datetime.now(), CC, FF)
+        ds = xr.open_dataset(FF_filename, engine="pynio")
+
+        for subhourly_idx in range(4):
+            T = K2F(ds["TMP_P0_L103_GLC0"].data[subhourly_idx, x_idx, y_idx])
+            temps.append(T)
+            times.append(times[-1] + timedelta(minutes=15))
+
+    logger.info("temps = {:}".format(temps))
 
 
 if __name__ == "__main__":

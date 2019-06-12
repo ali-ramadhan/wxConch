@@ -16,8 +16,8 @@ def hrrr_file_url(date, CC, FF):
     02, 03) and FF is the forecast hour (i.e. 00, 03, 06, 12, 15).
     """
 
-    date_str = str(date.year) + str(date.month) + str(date.day)
-    filename = "hrrr.t" + str(CC) + "z.wrfsubhf" + str(FF) + ".grib2"
+    date_str = str(date.year) + str(date.month).zfill(2) + str(date.day).zfill(2)
+    filename = "hrrr.t" + str(CC).zfill(2) + "z.wrfsubhf" + str(FF).zfill(2) + ".grib2"
     url = "https://ftp.ncep.noaa.gov/data/nccf/com/hrrr/prod/hrrr." + date_str + "/conus/" + filename
     return url, filename
 

@@ -1,6 +1,8 @@
 import logging.config
 from datetime import datetime
 
+import ffmpeg
+
 from utils import download_images
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
@@ -22,11 +24,20 @@ def hrrr_sounding_img_url(run, fh, lat, lon):
 def download_hrrr_soundings(run, lat, lon):
     for fh in range(HRRR_SOUNDING_HOURS):
         sounding_url = hrrr_sounding_img_url(run, fh, lat, lon)
+        sounding_filepath = "hrrr_sounding_fh" + str(fh).zfill(2) + ".png"
 
-        logger.info("Downloading sounding: {:s}".format(sounding_url))
-        download_images(sounding_url, filename="hrrr_sounding_fh" + str(fh).zfill(2) + ".png")
+        logger.info("Downloading sounding: {:s} -> {:s}".format(sounding_url, sounding_filepath))
+        download_images(sounding_url, filename=sounding_filepath)
 
 
-if __name__ == "__main__":
-    lat, lon = 42.362389, -71.091083
-    download_hrrr_soundings(datetime(2019, 6, 12, 12), lat, lon)
+def animate_hrrr_soundings(run, lat, lon):
+    download_hrrr_soundings(run, lat, lon)
+    sounding_gif_filepath = "hrrr_sounding.gif"
+    (
+        ffmpeg
+        .input("hrrr_sounding_fh%02d.png", framerate=5)
+        .output(sounding_gif_filepath)
+        .run()
+    )
+    return sounding_gif_filepath
+

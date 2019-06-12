@@ -3,12 +3,12 @@ from datetime import datetime
 import xarray as xr
 from numpy import abs, maximum, min, where
 
+from utils import download_file
+
 # Configure logger first before importing any sub-module that depend on the logger being already configured.
 import logging.config
-logging.config.fileConfig("logging.ini")
+logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
-
-from utils import download_file
 
 
 def hrrr_file_url(date, CC, FF):

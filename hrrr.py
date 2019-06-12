@@ -4,7 +4,7 @@ from datetime import datetime
 import xarray as xr
 from numpy import abs, maximum, min, where
 
-from utils import download_file
+from utils import download_file, K2F
 
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
@@ -43,6 +43,9 @@ def hrrr_temp_time_series(slat, slon):
 
     logger.info("Station (lat, lon) = ({:.6f}, {:.6f})".format(slat, slon))
     logger.info("Closest (lat, lon) = ({:.6f}, {:.6f})".format(clat, clon))
+
+    T = K2F(ds["TMP_P0_L103_GLC0"].data[x_idx, y_idx])
+    logger.info("T = {:}F".format(T))
 
 
 if __name__ == "__main__":

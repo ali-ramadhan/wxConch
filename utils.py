@@ -1,10 +1,9 @@
 import os
 import time
 import math
-import requests
 import logging.config
 from datetime import datetime
-from urllib.request import urlopen, urlretrieve
+from subprocess import run
 from urllib.parse import urlparse, urljoin
 
 import smtplib, ssl
@@ -30,52 +29,8 @@ HEADERS = {
 def K2F(K):
     return (K - 273.15) * (9/5) + 32
 
-
-def download_file(url, local_filepath, max_retries=1, retry_timeout=60):
-    # Removing illegal characters
-    # local_filepath = local_filepath.replace('?', '')
-    # local_filepath = local_filepath.replace('\"', '')
-    #
-    # basename = os.path.basename(local_filepath)
-    # basename = basename.replace(':', '')
-    # local_filepath = os.path.join(os.path.dirname(local_filepath), basename)
-
-    chunk_size = 1024  # [bytes]
-    wrote = 0  # [bytes]
-
-    response = requests.get(url, stream=True, headers=HEADERS)
-
-    if response.status_code != 200:
-        response.raise_for_status()
-
-    file_size = int(response.headers.get("content-length"))  # [bytes]
-    tqdm_total = math.ceil(file_size // chunk_size)
-
-    if os.path.isfile(local_filepath):
-        if os.path.getsize(local_filepath) == file_size:
-            logger.info("{:s} ({:,d} bytes) already downloaded. Skipping.".format(local_filepath, file_size))
-            return
-
-    while True:
-        try:
-            with open(local_filepath, 'wb') as f:
-                for chunk in tqdm(response.iter_content(chunk_size=chunk_size),
-                                  desc=local_filepath, leave=True, total=tqdm_total,
-                                  unit='KiB', unit_divisor=1024, unit_scale=True):
-                    wrote = wrote + len(chunk)
-                    if chunk:  # filter out keep-alive new chunks
-                        f.write(chunk)
-            break
-        except Exception as ex:
-            logger.error(ex)
-            logger.info("[{:}] Sleeping for {:s} seconds before retry...\n".format(str(datetime.now()), retry_timeout))
-            time.sleep(retry_timeout)
-
-    if file_size != 0 and wrote != file_size:
-        logger.error("Total file size does not match bytes written!")
-
-    return
-
+def download_file(url, local_filepath):
+    run(["wget", url, "-O", local_filepath])
 
 def make_soup(url):
     html = urlopen(url).read()

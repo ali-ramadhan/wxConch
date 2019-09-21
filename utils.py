@@ -30,7 +30,7 @@ def K2F(K):
     return (K - 273.15) * (9/5) + 32
 
 def download_file(url, local_filepath):
-    run(["wget", url, "-O", local_filepath])
+    run(["wget", "-nc", url, "-O", local_filepath])
 
 def make_soup(url):
     html = urlopen(url).read()

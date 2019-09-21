@@ -4,6 +4,7 @@ import math
 import logging.config
 from datetime import datetime
 from subprocess import run
+from urllib.request import urlopen, urlretrieve
 from urllib.parse import urlparse, urljoin
 
 import smtplib, ssl
@@ -14,7 +15,6 @@ from email.mime.text import MIMEText
 from email.utils import COMMASPACE, formatdate
 
 from bs4 import BeautifulSoup
-from tqdm import tqdm
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)

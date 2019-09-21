@@ -48,6 +48,7 @@ def animate_hrrr_soundings(run, lat, lon):
         ffmpeg
         .input("hrrr_sounding_fh%02d.png", framerate=4)
         .output(sounding_gif_filepath)
+        .overwrite_output()
         .run()
     )
     return sounding_gif_filepath
@@ -60,6 +61,7 @@ def animate_nam3km_soundings(run, lat, lon):
         ffmpeg
         .input("nam3km_sounding_fh%02d.png", framerate=4)
         .output(sounding_gif_filepath)
+        .overwrite_output()
         .run()
     )
     return sounding_gif_filepath

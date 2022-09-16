@@ -14,7 +14,7 @@ from utils import send_email
 plt.rcParams.update({'font.size': 14})
 
 def generate_report(lat, lon, owm_city_id, date):
-    t_owm, T_owm = open_weather_map_temp_time_series(owm_city_id)
+    # t_owm, T_owm = open_weather_map_temp_time_series(owm_city_id)
     t_ds, T_ds = dark_sky_temp_time_series(lat, lon)
     t_nws, T_nws = nws_temp_time_series(lat, lon)
     t_hrrr, T_hrrr = hrrr_temp_time_series(lat, lon)
@@ -24,7 +24,7 @@ def generate_report(lat, lon, owm_city_id, date):
     fig = plt.figure(figsize=(16, 9))
     ax = plt.subplot(111)
 
-    ax.plot([t + t_offset for t in t_owm], T_owm, marker='o', label="OpenWeatherMap")
+    # ax.plot([t + t_offset for t in t_owm], T_owm, marker='o', label="OpenWeatherMap")
     ax.plot([t + t_offset for t in t_ds], T_ds, marker='o', label="Dark Sky")
     ax.plot([t + t_offset for t in t_nws], T_nws, marker='o', label="National Weather Service")
     ax.plot(t_hrrr, T_hrrr, marker='o', label="HRRR")
@@ -42,7 +42,7 @@ def generate_report(lat, lon, owm_city_id, date):
     ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
     # Focus on the 6Z-6Z range.
-    plt.xlim([t_owm[0], second_6Z + timedelta(hours=6)])
+    # plt.xlim([t_owm[0], second_6Z + timedelta(hours=6)])
 
     # Nicer date formatting.
     formatter = DateFormatter('%m/%d %HZ')
@@ -60,14 +60,14 @@ def generate_report(lat, lon, owm_city_id, date):
     temp_time_series_filepath = "KBOS.png"
     plt.savefig(temp_time_series_filepath, dpi=150, format='png', transparent=False)
 
-    hrrr_gif_filepath = animate_hrrr_soundings(datetime(2019, 9, 21, 12), lat, lon)
-    nam3km_gif_filepath = animate_nam3km_soundings(datetime(2019, 9, 21, 12), lat, lon)
+    # hrrr_gif_filepath = animate_hrrr_soundings(datetime(date.year, date.month, date.day, 12), lat, lon)
+    # nam3km_gif_filepath = animate_nam3km_soundings(datetime(date.year, date.month, date.day, 12), lat, lon)
 
     sender_email = "WxConch <wxconch.forecast@gmail.com>"
     receiver_email = ["a3ramadhan@gmail.com"]
-    subject = "WxConch forecast for Boston (06/11/2019)"
+    subject = f"WxConch forecast for Boston, MA {date}"
     text = "Some weather statistics..."
-    files = [temp_time_series_filepath, hrrr_gif_filepath, nam3km_gif_filepath]
+    files = [temp_time_series_filepath]
 
     send_email(sender_email, receiver_email, subject, text, files)
 
@@ -75,5 +75,5 @@ if __name__ == "__main__":
     # Boston data
     lat, lon = 42.362389, -71.091083
     KBOS_OWM_ID = 4930956  # OpenWeatherMap city ID
-    generate_report(lat, lon, KBOS_OWM_ID, datetime(2019, 9, 21))
+    generate_report(lat, lon, KBOS_OWM_ID, datetime(2022, 9, 15))
 

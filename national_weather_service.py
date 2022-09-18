@@ -2,12 +2,15 @@ import json
 import requests
 import logging.config
 from dateutil.parser import parse
+from utils import longitude_east_to_west
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
 def nws_temp_time_series(lat, lon):
+    lon = longitude_east_to_west(lon)
+
     api_url = "https://api.weather.gov/points/" + str(lat) + "," + str(lon)
     response = requests.get(api_url)
 
@@ -29,18 +32,13 @@ def nws_temp_time_series(lat, lon):
     response = requests.get(hourly_forecast_url)
     hourly_forecast = json.loads(response.content)
 
-    times = []
-    temps = []
+    periods = hourly_forecast["properties"]["periods"]
+    n_periods = len(periods)
 
-    for i, fe in enumerate(hourly_forecast['properties']['periods']):
-        time = fe['startTime']
-        T = fe['temperature']
-        wind_speed = fe['windSpeed']
-        wind_dir = fe['windDirection']
-        description = fe['shortForecast']
+    timeseries = {
+        "times": [periods[p]["startTime"] for p in range(n_periods)],
+        "T": [periods[p]["temperature"] for p in range(n_periods)],
+        "wind_speed": [periods[p]["windSpeed"] for p in range(n_periods)]
+    }
 
-        times.append(parse(time))
-        temps.append(T)
-
-    return times, temps
-
+    return timeseries

@@ -1,17 +1,12 @@
 import logging.config
 import numpy as np
 from herbie import Herbie
-from numpy import abs, maximum, min, where
-from utils import closest_xy_coordinates
+from utils import closest_xy_coordinates, get_times
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 FORECAST_HOURS = 36  # NAM 5km goes up to 60 hours but we only need 36 hours max to cover the WxChallenge forecast period.
-
-def get_times(datasets, sample_field=":TMP:2 m"):
-    times = [np.datetime64(datasets[h][sample_field].time.data + datasets[h][sample_field].step.data) for h in range(FORECAST_HOURS+1)]
-    return np.array(times)
 
 def get_T_timeseries(datasets, x, y):
     ts = [datasets[h][":TMP:2 m"].t2m.data[x, y] for h in range(FORECAST_HOURS+1)]

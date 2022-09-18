@@ -1,7 +1,7 @@
 import os
 import logging.config
 from subprocess import run
-from numpy import deg2rad, sin, cos, sqrt, arctan2, abs, maximum, min, where
+from numpy import deg2rad, sin, cos, sqrt, arctan2, abs, maximum, min, where, array, datetime64
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
@@ -43,6 +43,10 @@ def closest_xy_coordinates(ds, target_lat, target_lon, verbose=True):
         logging.info(f"Closest coordinates: {closest_lat:.6f}°N, {closest_lon:.6f}°E @ (x={x}, y={y}) (Δ={distance/1000:.3f} km)")
 
     return x, y
+
+def get_times(datasets, hours, sample_field=":TMP:2 m"):
+    times = [datetime64(datasets[h][sample_field].time.data + datasets[h][sample_field].step.data) for h in range(hours+1)]
+    return array(times)
 
 def download_file(url, local_filepath):
     if not os.path.exists(local_filepath):

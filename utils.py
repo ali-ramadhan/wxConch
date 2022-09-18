@@ -1,5 +1,7 @@
 import os
 import logging.config
+import pandas as pd
+
 from subprocess import run
 from numpy import deg2rad, sin, cos, sqrt, arctan2, abs, maximum, min, where, array, datetime64
 from xarray import Dataset
@@ -88,9 +90,27 @@ def closest_latlon_coordinates(ds, target_lat, target_lon, verbose=True):
 
     return x, y
 
-def get_times(ds, hours):
-    times = [datetime64(ds.time.data + ds.step.data) for h in range(hours+1)]
-    return array(times)
+# def get_times(ds, hours):
+#     times = [datetime64(ds.time.data + ds.step.data) for h in range(hours+1)]
+#     return array(times)
+
+def get_times(datasets, hours):
+    times = []
+    for i in range(len(datasets)):
+        ds = sample_dataset(datasets[i])
+        time = datetime64(ds.time.data + ds.step.data)
+        times.append(time)
+    return times
+
+def get_farenheit_time_series(ts):
+    return array([K2F(T) for T in ts])
+
+METERS_PER_SECOND_TO_MILES_PER_HOUR = 3600 / (1000 * 1.609344)
+
+def get_wind_speed_time_series(ts):
+    u = ts["u_velocity"]
+    v = ts["v_velocity"]
+    return sqrt(u**2 + v**2) * METERS_PER_SECOND_TO_MILES_PER_HOUR
 
 # Data wrangling helper functions
 

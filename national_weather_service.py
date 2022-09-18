@@ -8,7 +8,7 @@ logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 
-def nws_temp_time_series(lat, lon):
+def nws_time_series(lat, lon):
     lon = longitude_east_to_west(lon)
 
     api_url = "https://api.weather.gov/points/" + str(lat) + "," + str(lon)
@@ -37,7 +37,7 @@ def nws_temp_time_series(lat, lon):
 
     timeseries = {
         "times": [periods[p]["startTime"] for p in range(n_periods)],
-        "T": [periods[p]["temperature"] for p in range(n_periods)],
+        "temperature_F": [periods[p]["temperature"] for p in range(n_periods)],
         "wind_speed": [periods[p]["windSpeed"] for p in range(n_periods)]
     }
 

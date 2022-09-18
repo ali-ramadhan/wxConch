@@ -1,76 +1,53 @@
 import logging.config
-from datetime import datetime, timedelta
-
-import xarray as xr
-from numpy import abs, maximum, min, where
-
-from utils import download_file, K2F
-
+import numpy as np
+from herbie import Herbie
+from herbie.tools import Herbie_latest
+from utils import latest_complete_forecast_time, closest_xy_coordinates, get_times, get_farenheit_time_series, get_wind_speed_time_series, sample_dataset
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-FORECAST_HOURS = 18
-SUBHOURLY = 4
 
+HRRR_FORECAST_HOURS = 18
+HRRR_SUBHOURLY_OUTPUTS = 4
 
-def hrrr_file_url(date, CC, FF):
-    """
-    HRRR 2D surface data file names are hrrr.tCCz.wrfsubhfFF.grib2 where CC is the model cycle runtime (i.e. 00, 01,
-    02, 03) and FF is the forecast hour (i.e. 00, 03, 06, 12, 15).
-    """
+field2key = {
+    ":TMP:2 m": "temperature_K",
+    ":UGRD:10 m": "u_velocity",
+    ":VGRD:10 m": "v_velocity",
+    ":APCP:" : "precipitation"
+}
 
-    date_str = str(date.year) + str(date.month).zfill(2) + str(date.day).zfill(2)
-    filename = "hrrr.t" + str(CC).zfill(2) + "z.wrfsubhf" + str(FF).zfill(2) + ".grib2"
-    url = "https://ftp.ncep.noaa.gov/data/nccf/com/hrrr/prod/hrrr." + date_str + "/conus/" + filename
-    return url, filename
+field2dskey = {
+    ":TMP:2 m": "t2m",
+    ":UGRD:10 m": "u10",
+    ":VGRD:10 m": "v10",
+    ":APCP:" : "tp"
+}
 
+def hrrr_forecast_time_series(forecast_time, target_lat, target_lon, hours=HRRR_FORECAST_HOURS, fields=[":TMP:2 m", ":UGRD:10 m", ":VGRD:10 m", ":APCP:"]):
+    products = [Herbie(forecast_time, model="hrrr", product="sfc", fxx=h) for h in range(hours+1)]
+    [product.download(field, verbose=True) for field in fields for product in products]
+    datasets = [{field: product.xarray(field) for field in fields} for product in products]
 
-def hrrr_temp_time_series(slat, slon, CC=10):
-    today = datetime.utcnow().date()
-    today_dt = datetime.combine(today, datetime.min.time())
+    x, y = closest_xy_coordinates(sample_dataset(datasets), target_lat, target_lon, verbose=True)
 
-    for FF in range(FORECAST_HOURS+1):
-        hrrr_url, hrrr_filename = hrrr_file_url(today, CC, FF)
-        download_file(hrrr_url, hrrr_filename)
+    timeseries = {
+        field2key[field]: np.array([datasets[h][field][field2dskey[field]].data[x, y] for h in range(hours+1)]) for field in fields
+    }
 
-    # Get lat, lon index from first forecast hour file.
-    _, FF0_filename = hrrr_file_url(datetime.now(), CC, 0)
-    logger.info("Reading data from {:s}...".format(FF0_filename))
-    ds0 = xr.open_dataset(FF0_filename, engine="pynio")
+    timeseries["time"] = get_times(datasets, hours)
+    timeseries["temperature_F"] = get_farenheit_time_series(timeseries["temperature_K"])
+    timeseries["wind_speed"] = get_wind_speed_time_series(timeseries)
 
-    lats = ds0["gridlat_0"].data
-    lons = ds0["gridlon_0"].data
+    return timeseries
 
-    abslat = abs(lats - slat)
-    abslon = abs(lons - slon)
-    c = maximum(abslon, abslat)
+def latest_hrrr_forecast_time_series(lat, lon):
+    forecast_time = latest_complete_forecast_time(n=6, freq_hours=1, model="hrrr", product="sfc", forecast_hours=HRRR_FORECAST_HOURS)
+    return hrrr_forecast_time_series(forecast_time, lat_Boston, lon_Boston)
 
-    x_idx, y_idx = where(c == min(c))
-    x_idx, y_idx = x_idx[0], y_idx[0]
-
-    clat, clon = lats[x_idx, y_idx], lons[x_idx, y_idx]
-
-    logger.info("Station (lat, lon) = ({:.6f}, {:.6f})".format(slat, slon))
-    logger.info("Closest (lat, lon) = ({:.6f}, {:.6f})".format(clat, clon))
-
-    times = []
-    temps = []
-
-    # Get first temperature data point.
-    T = K2F(ds0["TMP_P0_L103_GLC0"].data[x_idx, y_idx])
-    temps.append(T)
-    times.append(today_dt + timedelta(hours=CC))  # UTC time
-
-    # Get temperature time series.
-    for FF in range(1, FORECAST_HOURS+1):
-        _, FF_filename = hrrr_file_url(datetime.now(), CC, FF)
-        logger.info("Reading data from {:s}...".format(FF_filename))
-        ds = xr.open_dataset(FF_filename, engine="pynio")
-
-        for subhourly_idx in range(SUBHOURLY):
-            T = K2F(ds["TMP_P0_L103_GLC0"].data[subhourly_idx, x_idx, y_idx])
-            temps.append(T)
-            times.append(times[-1] + timedelta(minutes=15))
-
-    return times, temps
+if __name__ == "__main__":
+    # Testing @ Boston
+    lat_Boston, lon_Boston = 42.362389, 288.908917
+    timeseries = latest_hrrr_forecast_time_series(lat_Boston, lon_Boston)
+    print(timeseries)

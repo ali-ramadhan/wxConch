@@ -8,7 +8,7 @@ from utils import latest_complete_forecast_time, closest_latlon_coordinates, get
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-GFS_FORECAST_HOURS = 36
+GFS_FORECAST_HOURS = 48
 
 def get_T_timeseries(datasets, x, y, hours):
     ts = [datasets[h][":TMP:2 m"][0].t2m.data[x, y] for h in range(hours+1)]
@@ -42,7 +42,7 @@ def gfs_forecast_time_series(forecast_time, target_lat, target_lon, hours=GFS_FO
 
 def latest_gfs_forecast_time_series(lat, lon):
     forecast_time = latest_complete_forecast_time(n=6, freq_hours=6, model="gfs", product="pgrb2.0p25", forecast_hours=GFS_FORECAST_HOURS)
-    return gfs_forecast_time_series(forecast_time, lat_Boston, lon_Boston)
+    return gfs_forecast_time_series(forecast_time, lat, lon)
 
 if __name__ == "__main__":
     # Testing @ Boston

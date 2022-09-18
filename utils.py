@@ -98,7 +98,7 @@ def get_times(datasets, hours):
     times = []
     for i in range(len(datasets)):
         ds = sample_dataset(datasets[i])
-        time = datetime64(ds.time.data + ds.step.data)
+        time = pd.Timestamp(ds.time.data + ds.step.data)
         times.append(time)
     return times
 

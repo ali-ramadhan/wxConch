@@ -6,7 +6,7 @@ from utils import latest_complete_forecast_time, closest_xy_coordinates, get_tim
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-NAM_FORECAST_HOURS = 36  # NAM 5km goes up to 60 hours but we only need 36 hours max to cover the WxChallenge forecast period.
+NAM_FORECAST_HOURS = 48  # NAM 5km goes up to 60 hours but we only need 36 hours max to cover the WxChallenge forecast period.
 
 def get_T_timeseries(datasets, x, y, hours):
     ts = [datasets[h][":TMP:2 m"].t2m.data[x, y] for h in range(hours+1)]
@@ -44,8 +44,8 @@ def nam_forecast_time_series(forecast_time, target_lat, target_lon, hours=NAM_FO
     return timeseries
 
 def latest_nam_forecast_time_series(lat, lon):
-    forecast_time = latest_complete_forecast_time(n=6, freq_hours=1, model="nam", product="conusnest.hiresf", forecast_hours=NAM_FORECAST_HOURS)
-    return nam_forecast_time_series(forecast_time, lat_Boston, lon_Boston)
+    forecast_time = latest_complete_forecast_time(n=24, freq_hours=1, model="nam", product="conusnest.hiresf", forecast_hours=NAM_FORECAST_HOURS)
+    return nam_forecast_time_series(forecast_time, lat, lon)
 
 if __name__ == "__main__":
     # Testing @ Boston

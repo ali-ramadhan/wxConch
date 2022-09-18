@@ -44,7 +44,7 @@ def hrrr_forecast_time_series(forecast_time, target_lat, target_lon, hours=HRRR_
 
 def latest_hrrr_forecast_time_series(lat, lon):
     forecast_time = latest_complete_forecast_time(n=6, freq_hours=1, model="hrrr", product="sfc", forecast_hours=HRRR_FORECAST_HOURS)
-    return hrrr_forecast_time_series(forecast_time, lat_Boston, lon_Boston)
+    return hrrr_forecast_time_series(forecast_time, lat, lon)
 
 if __name__ == "__main__":
     # Testing @ Boston

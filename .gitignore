@@ -109,6 +109,9 @@ venv.bak/
 # Weather data
 *.grib2
 
+# METAR data
+*.csv
+
 # Plot output
 *.png
 *.gif

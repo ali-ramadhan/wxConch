@@ -2,6 +2,7 @@ import os
 import logging.config
 import pandas as pd
 
+from datetime import datetime
 from subprocess import run
 from numpy import deg2rad, sin, cos, sqrt, arctan2, abs, maximum, min, where, array, datetime64
 from xarray import Dataset
@@ -30,6 +31,14 @@ def latest_complete_forecast_time(n, freq_hours, model, product, forecast_hours,
         logging.info(f"Latest forecast not complete. Using forecast from {forecast_time}")
 
     return forecast_time
+
+# Time wrangling
+
+def compute_6Z_times(forecast_time=datetime.utcnow()):
+    utc_today = pd.Timestamp(datetime(forecast_time.year, forecast_time.month, forecast_time.day))
+    first_6Z = utc_today + pd.Timedelta(days=1, hours=6)
+    second_6Z = utc_today + pd.Timedelta(days=2, hours=6)
+    return first_6Z, second_6Z
 
 # Physics and unit conversions
 

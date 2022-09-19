@@ -2,11 +2,12 @@ import json
 import requests
 import logging.config
 import pandas as pd
-from dateutil.parser import parse
 from utils import longitude_east_to_west
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
+
+MILES_PER_HOUR_TO_KNOTS = 0.868976  # See https://en.wikipedia.org/wiki/Knot_(unit)#Definitions
 
 def nws_forecast_time_series(lat, lon):
     lon = longitude_east_to_west(lon)
@@ -35,11 +36,14 @@ def nws_forecast_time_series(lat, lon):
     periods = hourly_forecast["properties"]["periods"]
     n_periods = len(periods)
 
-    timeseries = {
-        "time": [pd.Timestamp(periods[p]["startTime"]).tz_convert("UTC").tz_localize(None) for p in range(n_periods)],
-        "temperature_F": [periods[p]["temperature"] for p in range(n_periods)],
-        "wind_speed": [int(periods[p]["windSpeed"].split()[0]) for p in range(n_periods)]
-    }
+    times = [pd.Timestamp(periods[p]["startTime"]).tz_convert("UTC").tz_localize(None) for p in range(n_periods)]
+    temperature = [periods[p]["temperature"] for p in range(n_periods)]
+    wind_speed = [MILES_PER_HOUR_TO_KNOTS * float(periods[p]["windSpeed"].split()[0]) for p in range(n_periods)]
+
+    timeseries = pd.DataFrame({
+        "temperature": temperature,
+        "wind_speed": wind_speed,
+    }, index=times)
 
     return timeseries
 

@@ -12,6 +12,8 @@ from herbie.tools import Herbie_latest
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
+METERS_PER_SECOND_TO_KNOTS = 1.943844  # See https://en.wikipedia.org/wiki/Knot_(unit)#Definitions
+
 # Herbie
 
 def latest_complete_forecast_time(n, freq_hours, model, product, forecast_hours, verbose=True):
@@ -44,6 +46,11 @@ def compute_6Z_times(forecast_time=datetime.utcnow()):
 
 def K2F(K):
     return (K - 273.15) * (9/5) + 32
+
+def uv2knots(u, v):
+    return sqrt(u**2 + v**2) * METERS_PER_SECOND_TO_KNOTS
+
+# Location and distance wrangling
 
 def longitude_east_to_west(lon):
     return lon - 360
@@ -98,48 +105,3 @@ def closest_latlon_coordinates(ds, target_lat, target_lon, verbose=True):
         logging.info(f"Closest coordinates: {closest_lat:.6f}°N, {closest_lon:.6f}°E @ (x={x}, y={y}) (Δ={distance/1000:.3f} km)")
 
     return x, y
-
-# def get_times(ds, hours):
-#     times = [datetime64(ds.time.data + ds.step.data) for h in range(hours+1)]
-#     return array(times)
-
-def get_times(datasets):
-    times = []
-    for i in range(len(datasets)):
-        ds = sample_dataset(datasets[i])
-        time = pd.Timestamp(ds.time.data + ds.step.data)
-        times.append(time)
-    return times
-
-def get_farenheit_time_series(ts):
-    return array([K2F(T) for T in ts])
-
-METERS_PER_SECOND_TO_MILES_PER_HOUR = 3600 / (1000 * 1.609344)
-
-def get_wind_speed_time_series(ts):
-    u = ts["u_velocity"]
-    v = ts["v_velocity"]
-    return sqrt(u**2 + v**2) * METERS_PER_SECOND_TO_MILES_PER_HOUR
-
-# Data wrangling helper functions
-
-def sample_dataset(ds):
-    if isinstance(ds, Dataset):
-        return ds
-    elif isinstance(ds, list):
-        return sample_dataset(ds[0])
-    elif isinstance(ds, dict):
-        keys = list(ds.keys())
-        sample_key = keys[0]
-        return sample_dataset(ds[sample_key])
-
-# Misc.
-
-def find_nearest(array, value):
-    idx = (abs(array - value)).argmin()  # Might have to replace with nanargmin?
-    return array[idx]
-
-def download_file(url, local_filepath):
-    if not os.path.exists(local_filepath):
-        run(["wget", "-nc", url, "-O", local_filepath])
-

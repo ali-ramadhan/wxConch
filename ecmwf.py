@@ -1,8 +1,9 @@
 import logging.config
 import numpy as np
 import pandas as pd
+import xarray as xr
 from herbie import Herbie
-from utils import latest_complete_forecast_time, longitude_east_to_west, closest_latlon_coordinates, get_times, get_farenheit_time_series, get_wind_speed_time_series, sample_dataset
+from utils import longitude_east_to_west, K2F, uv2knots, latest_complete_forecast_time, closest_latlon_coordinates
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
@@ -10,37 +11,45 @@ logger = logging.getLogger(__name__)
 ECMWF_FORECAST_HOURS = 60
 ECMWF_FORECAST_SPACING = 3  # hours
 
-field2key = {
-    ":2t:": "temperature_K",
-    ":10u:": "u_velocity",
-    ":10v:": "v_velocity",
-    ":tp:" : "precipitation"
-}
+def merge_ecmwf_fields(product):
+    # We drop the heightAboveGround coordinate since T is at 2m and u,v are at 10m.
+    # We just want to merge the datasets and don't need to keep track of z location.
+    T = product.xarray(":2t:").drop_vars("heightAboveGround")
+    u = product.xarray(":10u:").drop_vars("heightAboveGround")
+    v = product.xarray(":10v:").drop_vars("heightAboveGround")
+    P = product.xarray(":tp:").drop_vars("surface")
 
-field2dskey = {
-    ":2t:": "t2m",
-    ":10u:": "u10",
-    ":10v:": "v10",
-    ":tp:" : "tp"
-}
+    return xr.merge([T, u, v, P])
+
+def ecmwf_forecast_dataset(forecast_time, fields, hours_range):
+    products = [Herbie(forecast_time, model="ecmwf", product="oper", fxx=h) for h in hours_range]
+    [product.download(field, verbose=True) for field in fields for product in products]
+    ds = xr.concat([merge_ecmwf_fields(product) for product in products], dim="step")
+    return ds
 
 def ecmwf_forecast_time_series(forecast_time, target_lat, target_lon, hours=ECMWF_FORECAST_HOURS, fields=[":2t:", ":10u:", ":10v:", ":tp:"]):
     target_lon = longitude_east_to_west(target_lon)
+
     hours_range = range(0, hours+1, ECMWF_FORECAST_SPACING)
+    ds = ecmwf_forecast_dataset(forecast_time, fields, hours_range)
+    x, y = closest_latlon_coordinates(ds, target_lat, target_lon, verbose=True)
 
-    products = [Herbie(forecast_time, model="ecmwf", product="oper", fxx=h) for h in hours_range]
-    [product.download(field, verbose=True) for field in fields for product in products]
-    datasets = [{field: product.xarray(field) for field in fields} for product in products]
+    model_times = ds.time + ds.step
 
-    x, y = closest_latlon_coordinates(sample_dataset(datasets), target_lat, target_lon, verbose=True)
+    temperature_K = ds.t2m.isel(latitude=x, longitude=y)
+    temperature = K2F(temperature_K)
 
-    timeseries = {
-        field2key[field]: np.array([datasets[h][field][field2dskey[field]].data[x, y] for h in range(len(hours_range))]) for field in fields
-    }
+    u = ds.u10.isel(latitude=x, longitude=y)
+    v = ds.v10.isel(latitude=x, longitude=y)
+    wind_speed = uv2knots(u, v)
 
-    timeseries["time"] = get_times(datasets)
-    timeseries["temperature_F"] = get_farenheit_time_series(timeseries["temperature_K"])
-    timeseries["wind_speed"] = get_wind_speed_time_series(timeseries)
+    precipitation = ds.tp.isel(latitude=x, longitude=y)
+
+    timeseries = pd.DataFrame({
+        "temperature": temperature,
+        "wind_speed": wind_speed,
+        "precipitation": precipitation
+    }, index=model_times)
 
     return timeseries
 

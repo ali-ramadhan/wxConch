@@ -1,41 +1,49 @@
 import logging.config
 import numpy as np
 import pandas as pd
+import xarray as xr
 from herbie import Herbie
-from utils import latest_complete_forecast_time, closest_latlon_coordinates, get_times, get_farenheit_time_series, get_wind_speed_time_series, sample_dataset
+from utils import K2F, uv2knots, latest_complete_forecast_time, closest_latlon_coordinates
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
 GFS_FORECAST_HOURS = 48
 
-def get_T_timeseries(datasets, x, y, hours):
-    ts = [datasets[h][":TMP:2 m"][0].t2m.data[x, y] for h in range(hours+1)]
-    return np.array(ts)
+def merge_gfs_fields(product):
+    # We drop the heightAboveGround coordinate since T is at 2m and u,v are at 10m.
+    # We just want to merge the datasets and don't need to keep track of z location.
+    # Index 0 is the one with height coordinates so we pick it.
+    T = product.xarray(":TMP:2 m")[0].drop_vars("heightAboveGround")
+    u = product.xarray(":UGRD:10 m")[0].drop_vars("heightAboveGround")
+    v = product.xarray(":VGRD:10 m")[0].drop_vars("heightAboveGround")
 
-def get_u_timeseries(datasets, x, y, hours):
-    ts = [datasets[h][":UGRD:10 m"][0].u10.data[x, y] for h in range(hours+1)]
-    return np.array(ts)
+    return xr.merge([T, u, v])
 
-def get_v_timeseries(datasets, x, y, hours):
-    ts = [datasets[h][":VGRD:10 m"][0].v10.data[x, y] for h in range(hours+1)]
-    return np.array(ts)
-
-def gfs_forecast_time_series(forecast_time, target_lat, target_lon, hours=GFS_FORECAST_HOURS, fields=[":TMP:2 m", ":UGRD:10 m", ":VGRD:10 m"]):
+def gfs_forecast_dataset(forecast_time, fields, hours):
     products = [Herbie(forecast_time, model="gfs", product="pgrb2.0p25", fxx=h) for h in range(hours+1)]
     [product.download(field, verbose=True) for field in fields for product in products]
-    datasets = [{field: product.xarray(field) for field in fields} for product in products]
+    ds = xr.concat([merge_gfs_fields(product) for product in products], dim="step")
+    return ds
 
-    x, y = closest_latlon_coordinates(sample_dataset(datasets), target_lat, target_lon, verbose=True)
+def gfs_forecast_time_series(forecast_time, target_lat, target_lon, hours=GFS_FORECAST_HOURS, fields=[":TMP:2 m", ":UGRD:10 m", ":VGRD:10 m"]):
+    ds = gfs_forecast_dataset(forecast_time, fields, hours)
 
-    timeseries = {}
-    timeseries["time"] = get_times(datasets)
-    timeseries["temperature_K"] = get_T_timeseries(datasets, x, y, hours)
-    timeseries["u_velocity"] = get_u_timeseries(datasets, x, y, hours)
-    timeseries["v_velocity"] = get_v_timeseries(datasets, x, y, hours)
+    x, y = closest_latlon_coordinates(ds, target_lat, target_lon, verbose=True)
 
-    timeseries["temperature_F"] = get_farenheit_time_series(timeseries["temperature_K"])
-    timeseries["wind_speed"] = get_wind_speed_time_series(timeseries)
+    model_times = ds.time + ds.step
+
+    temperature_K = ds.t2m.isel(latitude=x, longitude=y)
+    temperature = K2F(temperature_K)
+
+    u = ds.u10.isel(latitude=x, longitude=y)
+    v = ds.v10.isel(latitude=x, longitude=y)
+    wind_speed = uv2knots(u, v)
+
+    timeseries = pd.DataFrame({
+        "temperature": temperature,
+        "wind_speed": wind_speed
+    }, index=model_times)
 
     return timeseries
 

@@ -1,45 +1,51 @@
 import logging.config
 import numpy as np
+import pandas as pd
+import xarray as xr
 from herbie import Herbie
-from utils import latest_complete_forecast_time, closest_xy_coordinates, get_times, get_farenheit_time_series, get_wind_speed_time_series, sample_dataset
+from utils import K2F, uv2knots, latest_complete_forecast_time, closest_xy_coordinates
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-NAM_FORECAST_HOURS = 48  # NAM 5km goes up to 60 hours but we only need 36 hours max to cover the WxChallenge forecast period.
+NAM_FORECAST_HOURS = 48  # NAM 5km goes up to 60 hours but we only need 48 hours max to cover the WxChallenge forecast period.
 
-def get_T_timeseries(datasets, x, y, hours):
-    ts = [datasets[h][":TMP:2 m"].t2m.data[x, y] for h in range(hours+1)]
-    return np.array(ts)
+def merge_nam_fields(product):
+    # We drop the heightAboveGround coordinate since T is at 2m and u,v are at 10m.
+    # We just want to merge the datasets and don't need to keep track of z location.
+    T = product.xarray(":TMP:2 m").drop_vars("heightAboveGround")
+    uv = product.xarray(":VGRD:10 m")[0].drop_vars("heightAboveGround")  # we want the dataset at index 0 which uses heightAboveGround
+    P = product.xarray(":APCP:").drop_vars("surface")
 
-def get_u_timeseries(datasets, x, y, hours):
-    ts = [datasets[h][":VGRD:10 m"][0].u10.data[x, y] for h in range(hours+1)]
-    return np.array(ts)
+    return xr.merge([T, uv, P])
 
-def get_v_timeseries(datasets, x, y, hours):
-    ts = [datasets[h][":VGRD:10 m"][0].v10.data[x, y] for h in range(hours+1)]
-    return np.array(ts)
-
-def get_P_timeseries(datasets, x, y, hours):
-    ts = [datasets[h][":APCP:"].tp.data[x, y] for h in range(hours+1)]
-    return np.array(ts)
-
-def nam_forecast_time_series(forecast_time, target_lat, target_lon, hours=NAM_FORECAST_HOURS, fields=[":TMP:2 m", ":VGRD:10 m", ":APCP:"]):
+def nam_forecast_dataset(forecast_time, fields, hours):
     products = [Herbie(forecast_time, model="nam", product="conusnest.hiresf", fxx=h) for h in range(hours+1)]
     [product.download(field, verbose=True) for field in fields for product in products]
-    datasets = [{field: product.xarray(field) for field in fields} for product in products]
+    ds = xr.concat([merge_nam_fields(product) for product in products], dim="step")
+    return ds
 
-    x, y = closest_xy_coordinates(sample_dataset(datasets), target_lat, target_lon, verbose=True)
+def nam_forecast_time_series(forecast_time, target_lat, target_lon, hours=NAM_FORECAST_HOURS, fields=[":TMP:2 m", ":VGRD:10 m", ":APCP:"]):
+    ds = nam_forecast_dataset(forecast_time, fields, hours)
 
-    timeseries = {}
-    timeseries["time"] = get_times(datasets)
-    timeseries["temperature_K"] = get_T_timeseries(datasets, x, y, hours)
-    timeseries["u_velocity"] = get_u_timeseries(datasets, x, y, hours)
-    timeseries["v_velocity"] = get_v_timeseries(datasets, x, y, hours)
-    timeseries["precipitation"] = get_P_timeseries(datasets, x, y, hours)
+    x, y = closest_xy_coordinates(ds, target_lat, target_lon, verbose=True)
 
-    timeseries["temperature_F"] = get_farenheit_time_series(timeseries["temperature_K"])
-    timeseries["wind_speed"] = get_wind_speed_time_series(timeseries)
+    model_times = ds.time + ds.step
+
+    temperature_K = ds.t2m.isel(x=y, y=x)
+    temperature = K2F(temperature_K)
+
+    u = ds.u10.isel(x=y, y=x)
+    v = ds.v10.isel(x=y, y=x)
+    wind_speed = uv2knots(u, v)
+
+    precipitation = ds.tp.isel(x=y, y=x)
+
+    timeseries = pd.DataFrame({
+        "temperature": temperature,
+        "wind_speed": wind_speed,
+        "precipitation": precipitation
+    }, index=model_times)
 
     return timeseries
 

@@ -1,15 +1,20 @@
-from datetime import datetime, timedelta
+import logging.config
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.dates import date2num, DateFormatter
+from matplotlib.dates import DateFormatter
 
 from hrrr import latest_hrrr_forecast_time_series
 from gfs import latest_gfs_forecast_time_series
 from nam import latest_nam_forecast_time_series
 from ecmwf import latest_ecmwf_forecast_time_series
 from nws import nws_forecast_time_series
+
+from utils import compute_6Z_times
+
+logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
+logger = logging.getLogger(__name__)
 
 plt.rcParams.update({'font.size': 14})
 
@@ -65,23 +70,14 @@ def wind_speed_label(model, time, wind_speed, t1, t2):
         t_max_txt = t_max.strftime("%m/%d %H:%M")
         return f"{model} (max: {s_max:.1f} mph @ {t_max_txt})"
 
-if __name__ == "__main__":
-    # Testing @ Boston
-    lat, lon = 42.362389, 288.908917
+def plot_temperature_forecast(timeseries, station, filepath):
+    ts_hrrr = timeseries["hrrr"]
+    ts_nam = timeseries["nam"]
+    ts_gfs = timeseries["gfs"]
+    ts_ecmwf = timeseries["ecmwf"]
+    ts_nws = timeseries["nws"]
 
-    ts_hrrr = latest_hrrr_forecast_time_series(lat, lon)
-    ts_nam = latest_nam_forecast_time_series(lat, lon)
-    ts_gfs = latest_gfs_forecast_time_series(lat, lon)
-    ts_ecmwf = latest_ecmwf_forecast_time_series(lat, lon)
-    ts_nws = nws_forecast_time_series(lat, lon)
-
-    # Calculate position of tomorrow's 6Z and after tomorrow's 6Z.
-    utcnow = datetime.utcnow()
-    utc_today = pd.Timestamp(datetime(utcnow.year, utcnow.month, utcnow.day))
-    first_6Z = utc_today + pd.Timedelta(days=1, hours=6)
-    second_6Z = utc_today + pd.Timedelta(days=2, hours=6)
-
-    # Temperature
+    first_6Z, second_6Z = compute_6Z_times()
 
     fig = plt.figure(figsize=(16, 9))
     ax = plt.subplot(111)
@@ -109,15 +105,24 @@ if __name__ == "__main__":
     ax.xaxis.set_major_formatter(formatter)
     ax.xaxis.set_tick_params(rotation=30, labelsize=11)
 
+    plt.title(f"Temperature forecast for {station}")
     plt.xlabel("Time (UTC)")
     plt.ylabel("Temperature (°F)")
 
-    plt.legend(loc="upper left", ncol=2, bbox_to_anchor=(0, 1.1), frameon=False)
+    plt.legend(loc="upper left", ncol=2, bbox_to_anchor=(0, 1.15), frameon=False)
     plt.grid(which="both")
 
-    plt.show()
+    logging.info(f"Saving {filepath}...")
+    plt.savefig(filepath)
 
-    # Wind speed
+def plot_wind_speed_forecast(timeseries, station, filepath):
+    ts_hrrr = timeseries["hrrr"]
+    ts_nam = timeseries["nam"]
+    ts_gfs = timeseries["gfs"]
+    ts_ecmwf = timeseries["ecmwf"]
+    ts_nws = timeseries["nws"]
+
+    first_6Z, second_6Z = compute_6Z_times()
 
     fig = plt.figure(figsize=(16, 9))
     ax = plt.subplot(111)
@@ -145,15 +150,24 @@ if __name__ == "__main__":
     ax.xaxis.set_major_formatter(formatter)
     ax.xaxis.set_tick_params(rotation=30, labelsize=11)
 
+    plt.title(f"Wind speed forecast for {station}")
     plt.xlabel("Time (UTC)")
     plt.ylabel("Wind speed (mph)")
 
     plt.legend(loc="upper left", ncol=2, bbox_to_anchor=(0, 1.1), frameon=False)
     plt.grid(which="both")
 
-    plt.show()
+    logging.info(f"Saving {filepath}...")
+    plt.savefig(filepath)
 
-    # Precip
+def plot_precipitation_forecast(timeseries, station, filepath):
+    ts_hrrr = timeseries["hrrr"]
+    ts_nam = timeseries["nam"]
+    ts_gfs = timeseries["gfs"]
+    ts_ecmwf = timeseries["ecmwf"]
+    ts_nws = timeseries["nws"]
+
+    first_6Z, second_6Z = compute_6Z_times()
 
     fig = plt.figure(figsize=(16, 9))
     ax = plt.subplot(111)
@@ -178,10 +192,29 @@ if __name__ == "__main__":
     ax.xaxis.set_major_formatter(formatter)
     ax.xaxis.set_tick_params(rotation=30, labelsize=11)
 
+    plt.title(f"Precipitation forecast for {station}")
     plt.xlabel("Time (UTC)")
     plt.ylabel("Precipitation")
 
     plt.legend(loc="upper left", ncol=2, bbox_to_anchor=(0, 1.1), frameon=False)
     plt.grid(which="both")
 
-    plt.show()
+    logging.info(f"Saving {filepath}...")
+    plt.savefig(filepath)
+
+if __name__ == "__main__":
+    # Testing @ Boston
+    lat, lon = 42.362389, 288.908917
+    station = "KBOS"
+
+    timeseries = {
+        "hrrr": latest_hrrr_forecast_time_series(lat, lon),
+        "nam": latest_nam_forecast_time_series(lat, lon),
+        "gfs": latest_gfs_forecast_time_series(lat, lon),
+        "ecmwf": latest_ecmwf_forecast_time_series(lat, lon),
+        "nws": nws_forecast_time_series(lat, lon)
+    }
+
+    plot_temperature_forecast(timeseries, station, "temperature_forecast.png")
+    plot_wind_speed_forecast(timeseries, station, "wind_speed_forecast.png")
+    plot_precipitation_forecast(timeseries, station, "precipitation_forecast.png")

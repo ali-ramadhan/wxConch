@@ -7,7 +7,7 @@ from utils import latest_complete_forecast_time, longitude_east_to_west, closest
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-ECMWF_FORECAST_HOURS = 48
+ECMWF_FORECAST_HOURS = 60
 ECMWF_FORECAST_SPACING = 3  # hours
 
 field2key = {

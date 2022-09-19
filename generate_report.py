@@ -1,48 +1,108 @@
 from datetime import datetime, timedelta
 
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.dates import date2num, DateFormatter
 
-from dark_sky import dark_sky_temp_time_series
-from open_weather_map import open_weather_map_temp_time_series
-from national_weather_service import nws_temp_time_series
-from hrrr import hrrr_temp_time_series
-from soundings import animate_hrrr_soundings, animate_nam3km_soundings
-
-from utils import send_email
+from hrrr import latest_hrrr_forecast_time_series
+from gfs import latest_gfs_forecast_time_series
+from nam import latest_nam_forecast_time_series
+from ecmwf import latest_ecmwf_forecast_time_series
+from nws import nws_forecast_time_series
 
 plt.rcParams.update({'font.size': 14})
 
-def generate_report(lat, lon, owm_city_id, date):
-    # t_owm, T_owm = open_weather_map_temp_time_series(owm_city_id)
-    t_ds, T_ds = dark_sky_temp_time_series(lat, lon)
-    t_nws, T_nws = nws_temp_time_series(lat, lon)
-    t_hrrr, T_hrrr = hrrr_temp_time_series(lat, lon)
+def time_indices(ts, t1, t2):
+    times = pd.Series(ts)
+    return np.where((t1 <= times) & (times <= t2))[0]
 
-    t_offset = timedelta(hours=4)
+def min_and_max_temperature(time, temperature, t1, t2):
+    time = np.array(time)
+    temperature = np.array(temperature)
+
+    inds = time_indices(time, t1, t2)
+    t = time[inds]
+    T = temperature[inds]
+
+    i_min = np.argmin(T)
+    i_max = np.argmax(T)
+    t_min = t[i_min]
+    t_max = t[i_max]
+    T_min = T[i_min]
+    T_max = T[i_max]
+
+    return t_min, T_min, t_max, T_max
+
+def max_wind_speed(time, wind_speed, t1, t2):
+    time = np.array(time)
+    wind_speed = np.array(wind_speed)
+
+    inds = time_indices(time, t1, t2)
+    t = time[inds]
+    s = wind_speed[inds]
+
+    i_max = np.argmax(s)
+    t_max = t[i_max]
+    s_max = s[i_max]
+
+    return t_max, s_max
+
+def temperature_label(model, time, temperature, t1, t2):
+    if time_indices(time, t1, t2).size == 0:
+        return f"{model}"
+    else:
+        t_min, T_min, t_max, T_max = min_and_max_temperature(time, temperature, t1, t2)
+        t_min_txt = t_min.strftime("%m/%d %H:%M")
+        t_max_txt = t_max.strftime("%m/%d %H:%M")
+        return f"{model} (min: {T_min:.1f}°F @ {t_min_txt}, max: {T_max:.1f}°F @ {t_max_txt})"
+
+def wind_speed_label(model, time, wind_speed, t1, t2):
+    if time_indices(time, t1, t2).size == 0:
+        return f"{model}"
+    else:
+        t_max, s_max = max_wind_speed(time, wind_speed, t1, t2)
+        t_max_txt = t_max.strftime("%m/%d %H:%M")
+        return f"{model} (max: {s_max:.1f} mph @ {t_max_txt})"
+
+if __name__ == "__main__":
+    # Testing @ Boston
+    lat, lon = 42.362389, 288.908917
+
+    ts_hrrr = latest_hrrr_forecast_time_series(lat, lon)
+    ts_nam = latest_nam_forecast_time_series(lat, lon)
+    ts_gfs = latest_gfs_forecast_time_series(lat, lon)
+    ts_ecmwf = latest_ecmwf_forecast_time_series(lat, lon)
+    ts_nws = nws_forecast_time_series(lat, lon)
+
+    # Calculate position of tomorrow's 6Z and after tomorrow's 6Z.
+    utcnow = datetime.utcnow()
+    utc_today = pd.Timestamp(datetime(utcnow.year, utcnow.month, utcnow.day))
+    first_6Z = utc_today + pd.Timedelta(days=1, hours=6)
+    second_6Z = utc_today + pd.Timedelta(days=2, hours=6)
+
+    # Temperature
 
     fig = plt.figure(figsize=(16, 9))
     ax = plt.subplot(111)
 
-    # ax.plot([t + t_offset for t in t_owm], T_owm, marker='o', label="OpenWeatherMap")
-    ax.plot([t + t_offset for t in t_ds], T_ds, marker='o', label="Dark Sky")
-    ax.plot([t + t_offset for t in t_nws], T_nws, marker='o', label="National Weather Service")
-    ax.plot(t_hrrr, T_hrrr, marker='o', label="HRRR")
+    label_hrrr = temperature_label("HRRR", ts_hrrr["time"], ts_hrrr["temperature_F"], first_6Z, second_6Z)
+    label_nam = temperature_label("NAM 5km", ts_nam["time"], ts_nam["temperature_F"], first_6Z, second_6Z)
+    label_gfs = temperature_label("GFS 0.25°", ts_gfs["time"], ts_gfs["temperature_F"], first_6Z, second_6Z)
+    label_ecmwf = temperature_label("ECMWF 0.4°", ts_ecmwf["time"], ts_ecmwf["temperature_F"], first_6Z, second_6Z)
+    label_nws = temperature_label("NWS", ts_nws["time"], ts_nws["temperature_F"], first_6Z, second_6Z)
 
-    # Calculate position of and plot lines for tomorrow's 6Z and after tomorrow's 6Z.
-    utcnow = datetime.utcnow()
-    utc_today = datetime(utcnow.year, utcnow.month, utcnow.day)
-    first_6Z = utc_today + timedelta(days=1, hours=6)
-    second_6Z = utc_today + timedelta(days=2, hours=6)
+    ax.plot(ts_hrrr["time"], ts_hrrr["temperature_F"], marker="o", label=label_hrrr)
+    ax.plot(ts_nam["time"], ts_nam["temperature_F"], marker="o", label=label_nam)
+    ax.plot(ts_gfs["time"], ts_gfs["temperature_F"], marker="o", label=label_gfs)
+    ax.plot(ts_ecmwf["time"], ts_ecmwf["temperature_F"], marker="o", label=label_ecmwf)
+    ax.plot(ts_nws["time"], ts_nws["temperature_F"], marker="o", label=label_nws)
+
     ax.axvline(x=first_6Z, ymin=0, ymax=1, color="red", linestyle="--")
     ax.axvline(x=second_6Z, ymin=0, ymax=1, color="red", linestyle="--")
 
-    # Squeeze plot a little so we can fit the legend on the right.
-    box = ax.get_position()
-    ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-
     # Focus on the 6Z-6Z range.
-    # plt.xlim([t_owm[0], second_6Z + timedelta(hours=6)])
+    plt.xlim([first_6Z - pd.Timedelta(hours=6), second_6Z + pd.Timedelta(hours=6)])
 
     # Nicer date formatting.
     formatter = DateFormatter('%m/%d %HZ')
@@ -52,28 +112,76 @@ def generate_report(lat, lon, owm_city_id, date):
     plt.xlabel("Time (UTC)")
     plt.ylabel("Temperature (°F)")
 
-    plt.legend(loc="upper left", bbox_to_anchor=(1, 1), frameon=False)
-    plt.grid()
+    plt.legend(loc="upper left", ncol=2, bbox_to_anchor=(0, 1.1), frameon=False)
+    plt.grid(which="both")
 
     plt.show()
 
-    temp_time_series_filepath = "KBOS.png"
-    plt.savefig(temp_time_series_filepath, dpi=150, format='png', transparent=False)
+    # Wind speed
 
-    # hrrr_gif_filepath = animate_hrrr_soundings(datetime(date.year, date.month, date.day, 12), lat, lon)
-    # nam3km_gif_filepath = animate_nam3km_soundings(datetime(date.year, date.month, date.day, 12), lat, lon)
+    fig = plt.figure(figsize=(16, 9))
+    ax = plt.subplot(111)
 
-    sender_email = "WxConch <wxconch.forecast@gmail.com>"
-    receiver_email = ["a3ramadhan@gmail.com"]
-    subject = f"WxConch forecast for Boston, MA {date}"
-    text = "Some weather statistics..."
-    files = [temp_time_series_filepath]
+    label_hrrr = wind_speed_label("HRRR", ts_hrrr["time"], ts_hrrr["wind_speed"], first_6Z, second_6Z)
+    label_nam = wind_speed_label("NAM 5km", ts_nam["time"], ts_nam["wind_speed"], first_6Z, second_6Z)
+    label_gfs = wind_speed_label("GFS 0.25°", ts_gfs["time"], ts_gfs["wind_speed"], first_6Z, second_6Z)
+    label_ecmwf = wind_speed_label("ECMWF 0.4°", ts_ecmwf["time"], ts_ecmwf["wind_speed"], first_6Z, second_6Z)
+    label_nws = wind_speed_label("NWS", ts_nws["time"], ts_nws["wind_speed"], first_6Z, second_6Z)
 
-    send_email(sender_email, receiver_email, subject, text, files)
+    ax.plot(ts_hrrr["time"], ts_hrrr["wind_speed"], marker="o", label=label_hrrr)
+    ax.plot(ts_nam["time"], ts_nam["wind_speed"], marker="o", label=label_nam)
+    ax.plot(ts_gfs["time"], ts_gfs["wind_speed"], marker="o", label=label_gfs)
+    ax.plot(ts_ecmwf["time"], ts_ecmwf["wind_speed"], marker="o", label=label_ecmwf)
+    ax.plot(ts_nws["time"], ts_nws["wind_speed"], marker="o", label=label_nws)
 
-if __name__ == "__main__":
-    # Boston data
-    lat, lon = 42.362389, -71.091083
-    KBOS_OWM_ID = 4930956  # OpenWeatherMap city ID
-    generate_report(lat, lon, KBOS_OWM_ID, datetime(2022, 9, 15))
+    ax.axvline(x=first_6Z, ymin=0, ymax=1, color="red", linestyle="--")
+    ax.axvline(x=second_6Z, ymin=0, ymax=1, color="red", linestyle="--")
 
+    # Focus on the 6Z-6Z range.
+    plt.xlim([first_6Z - pd.Timedelta(hours=6), second_6Z + pd.Timedelta(hours=6)])
+
+    # Nicer date formatting.
+    formatter = DateFormatter('%m/%d %HZ')
+    ax.xaxis.set_major_formatter(formatter)
+    ax.xaxis.set_tick_params(rotation=30, labelsize=11)
+
+    plt.xlabel("Time (UTC)")
+    plt.ylabel("Wind speed (mph)")
+
+    plt.legend(loc="upper left", ncol=2, bbox_to_anchor=(0, 1.1), frameon=False)
+    plt.grid(which="both")
+
+    plt.show()
+
+    # Precip
+
+    fig = plt.figure(figsize=(16, 9))
+    ax = plt.subplot(111)
+
+    # label_hrrr = wind_speed_label("HRRR", ts_hrrr["time"], ts_hrrr["wind_speed"], first_6Z, second_6Z)
+    # label_nam = wind_speed_label("NAM 5km", ts_nam["time"], ts_nam["wind_speed"], first_6Z, second_6Z)
+
+    ax.plot(ts_hrrr["time"], ts_hrrr["precipitation"], marker="o", label="HRRR")
+    ax.plot(ts_nam["time"], ts_nam["precipitation"], marker="o", label="NAM 5km")
+    ax.plot(ts_ecmwf["time"], ts_ecmwf["precipitation"], marker="o", label="ECMWF 0.4°")
+
+    # plot cumsum of precip.
+
+    ax.axvline(x=first_6Z, ymin=0, ymax=1, color="red", linestyle="--")
+    ax.axvline(x=second_6Z, ymin=0, ymax=1, color="red", linestyle="--")
+
+    # Focus on the 6Z-6Z range.
+    plt.xlim([first_6Z - pd.Timedelta(hours=6), second_6Z + pd.Timedelta(hours=6)])
+
+    # Nicer date formatting.
+    formatter = DateFormatter('%m/%d %HZ')
+    ax.xaxis.set_major_formatter(formatter)
+    ax.xaxis.set_tick_params(rotation=30, labelsize=11)
+
+    plt.xlabel("Time (UTC)")
+    plt.ylabel("Precipitation")
+
+    plt.legend(loc="upper left", ncol=2, bbox_to_anchor=(0, 1.1), frameon=False)
+    plt.grid(which="both")
+
+    plt.show()

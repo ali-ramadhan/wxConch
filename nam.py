@@ -32,7 +32,7 @@ def nam_forecast_time_series(forecast_time, target_lat, target_lon, hours=NAM_FO
     x, y = closest_xy_coordinates(sample_dataset(datasets), target_lat, target_lon, verbose=True)
 
     timeseries = {}
-    timeseries["time"] = get_times(datasets, hours)
+    timeseries["time"] = get_times(datasets)
     timeseries["temperature_K"] = get_T_timeseries(datasets, x, y, hours)
     timeseries["u_velocity"] = get_u_timeseries(datasets, x, y, hours)
     timeseries["v_velocity"] = get_v_timeseries(datasets, x, y, hours)

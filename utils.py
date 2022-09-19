@@ -94,7 +94,7 @@ def closest_latlon_coordinates(ds, target_lat, target_lon, verbose=True):
 #     times = [datetime64(ds.time.data + ds.step.data) for h in range(hours+1)]
 #     return array(times)
 
-def get_times(datasets, hours):
+def get_times(datasets):
     times = []
     for i in range(len(datasets)):
         ds = sample_dataset(datasets[i])

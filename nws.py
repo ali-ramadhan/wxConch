@@ -8,7 +8,6 @@ from utils import longitude_east_to_west
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-
 def nws_forecast_time_series(lat, lon):
     lon = longitude_east_to_west(lon)
 

@@ -2,7 +2,6 @@ import logging.config
 import numpy as np
 import pandas as pd
 from herbie import Herbie
-from herbie.tools import Herbie_latest
 from utils import latest_complete_forecast_time, closest_latlon_coordinates, get_times, get_farenheit_time_series, get_wind_speed_time_series, sample_dataset
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
@@ -30,7 +29,7 @@ def gfs_forecast_time_series(forecast_time, target_lat, target_lon, hours=GFS_FO
     x, y = closest_latlon_coordinates(sample_dataset(datasets), target_lat, target_lon, verbose=True)
 
     timeseries = {}
-    timeseries["time"] = get_times(datasets, hours)
+    timeseries["time"] = get_times(datasets)
     timeseries["temperature_K"] = get_T_timeseries(datasets, x, y, hours)
     timeseries["u_velocity"] = get_u_timeseries(datasets, x, y, hours)
     timeseries["v_velocity"] = get_v_timeseries(datasets, x, y, hours)

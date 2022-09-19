@@ -1,12 +1,10 @@
 import logging.config
 import numpy as np
 from herbie import Herbie
-from herbie.tools import Herbie_latest
 from utils import latest_complete_forecast_time, closest_xy_coordinates, get_times, get_farenheit_time_series, get_wind_speed_time_series, sample_dataset
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
-
 
 HRRR_FORECAST_HOURS = 18
 HRRR_SUBHOURLY_OUTPUTS = 4
@@ -36,7 +34,7 @@ def hrrr_forecast_time_series(forecast_time, target_lat, target_lon, hours=HRRR_
         field2key[field]: np.array([datasets[h][field][field2dskey[field]].data[x, y] for h in range(hours+1)]) for field in fields
     }
 
-    timeseries["time"] = get_times(datasets, hours)
+    timeseries["time"] = get_times(datasets)
     timeseries["temperature_F"] = get_farenheit_time_series(timeseries["temperature_K"])
     timeseries["wind_speed"] = get_wind_speed_time_series(timeseries)
 

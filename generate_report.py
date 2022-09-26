@@ -11,88 +11,49 @@ from nam import latest_nam_forecast_time_series
 from ecmwf import latest_ecmwf_forecast_time_series
 from nws import nws_forecast_time_series
 
-from utils import compute_6Z_times
+from utils import compute_6Z_times, timeseries_max, timeseries_min_and_max
 
 logging.config.fileConfig("logging.ini", disable_existing_loggers=False)
 logger = logging.getLogger(__name__)
 
-plt.rcParams.update({'font.size': 14})
+def temperature_label(model, temperature, t1, t2):
+    ts = temperature[t1:t2]
 
-def time_indices(ts, t1, t2):
-    times = pd.Series(ts)
-    return np.where((t1 <= times) & (times <= t2))[0]
-
-def min_and_max_temperature(time, temperature, t1, t2):
-    time = np.array(time)
-    temperature = np.array(temperature)
-
-    inds = time_indices(time, t1, t2)
-    t = time[inds]
-    T = temperature[inds]
-
-    i_min = np.argmin(T)
-    i_max = np.argmax(T)
-    t_min = t[i_min]
-    t_max = t[i_max]
-    T_min = T[i_min]
-    T_max = T[i_max]
-
-    return t_min, T_min, t_max, T_max
-
-def max_wind_speed(time, wind_speed, t1, t2):
-    time = np.array(time)
-    wind_speed = np.array(wind_speed)
-
-    inds = time_indices(time, t1, t2)
-    t = time[inds]
-    s = wind_speed[inds]
-
-    i_max = np.argmax(s)
-    t_max = t[i_max]
-    s_max = s[i_max]
-
-    return t_max, s_max
-
-def temperature_label(model, time, temperature, t1, t2):
-    if time_indices(time, t1, t2).size == 0:
+    if ts.size == 0:
         return f"{model}"
     else:
-        t_min, T_min, t_max, T_max = min_and_max_temperature(time, temperature, t1, t2)
+        t_min, T_min, t_max, T_max = timeseries_min_and_max(ts)
         t_min_txt = t_min.strftime("%m/%d %H:%M")
         t_max_txt = t_max.strftime("%m/%d %H:%M")
-        return f"{model} (min: {T_min:.1f}°F @ {t_min_txt}, max: {T_max:.1f}°F @ {t_max_txt})"
+        return f"{model} (min: {T_min:.1f}°F @ {t_min_txt}Z, max: {T_max:.1f}°F @ {t_max_txt}Z)"
 
-def wind_speed_label(model, time, wind_speed, t1, t2):
-    if time_indices(time, t1, t2).size == 0:
+def wind_speed_label(model, wind_speed, t1, t2):
+    ts = wind_speed[t1:t2]
+
+    if ts.size == 0:
         return f"{model}"
     else:
-        t_max, s_max = max_wind_speed(time, wind_speed, t1, t2)
+        t_max, s_max = timeseries_max(ts)
         t_max_txt = t_max.strftime("%m/%d %H:%M")
-        return f"{model} (max: {s_max:.1f} mph @ {t_max_txt})"
+        return f"{model} (max: {s_max:.1f} mph @ {t_max_txt}Z)"
 
 def plot_temperature_forecast(timeseries, station, filepath):
-    ts_hrrr = timeseries["hrrr"]
-    ts_nam = timeseries["nam"]
-    ts_gfs = timeseries["gfs"]
-    ts_ecmwf = timeseries["ecmwf"]
-    ts_nws = timeseries["nws"]
-
     first_6Z, second_6Z = compute_6Z_times()
 
     fig = plt.figure(figsize=(16, 9))
     ax = plt.subplot(111)
 
-    label_hrrr = temperature_label("HRRR", ts_hrrr["time"], ts_hrrr["temperature_F"], first_6Z, second_6Z)
-    label_nam = temperature_label("NAM 5km", ts_nam["time"], ts_nam["temperature_F"], first_6Z, second_6Z)
-    label_gfs = temperature_label("GFS 0.25°", ts_gfs["time"], ts_gfs["temperature_F"], first_6Z, second_6Z)
-    label_ecmwf = temperature_label("ECMWF 0.4°", ts_ecmwf["time"], ts_ecmwf["temperature_F"], first_6Z, second_6Z)
-    label_nws = temperature_label("NWS", ts_nws["time"], ts_nws["temperature_F"], first_6Z, second_6Z)
+    label_hrrr = temperature_label("HRRR", timeseries["hrrr"]["temperature"], first_6Z, second_6Z)
+    label_nam = temperature_label("NAM 5km", timeseries["nam"]["temperature"], first_6Z, second_6Z)
+    label_gfs = temperature_label("GFS 0.25°", timeseries["gfs"]["temperature"], first_6Z, second_6Z)
+    label_ecmwf = temperature_label("ECMWF 0.4°", timeseries["ecmwf"]["temperature"], first_6Z, second_6Z)
+    label_nws = temperature_label("NWS", timeseries["nws"]["temperature"], first_6Z, second_6Z)
 
-    ax.plot(ts_hrrr["time"], ts_hrrr["temperature_F"], marker="o", label=label_hrrr)
-    ax.plot(ts_nam["time"], ts_nam["temperature_F"], marker="o", label=label_nam)
-    ax.plot(ts_gfs["time"], ts_gfs["temperature_F"], marker="o", label=label_gfs)
-    ax.plot(ts_ecmwf["time"], ts_ecmwf["temperature_F"], marker="o", label=label_ecmwf)
-    ax.plot(ts_nws["time"], ts_nws["temperature_F"], marker="o", label=label_nws)
+    ax.plot(timeseries["hrrr"]["temperature"], marker="o", label=label_hrrr)
+    ax.plot(timeseries["nam"]["temperature"], marker="o", label=label_nam)
+    ax.plot(timeseries["gfs"]["temperature"], marker="o", label=label_gfs)
+    ax.plot(timeseries["ecmwf"]["temperature"], marker="o", label=label_ecmwf)
+    ax.plot(timeseries["nws"]["temperature"], marker="o", label=label_nws)
 
     ax.axvline(x=first_6Z, ymin=0, ymax=1, color="red", linestyle="--")
     ax.axvline(x=second_6Z, ymin=0, ymax=1, color="red", linestyle="--")
@@ -116,28 +77,22 @@ def plot_temperature_forecast(timeseries, station, filepath):
     plt.savefig(filepath)
 
 def plot_wind_speed_forecast(timeseries, station, filepath):
-    ts_hrrr = timeseries["hrrr"]
-    ts_nam = timeseries["nam"]
-    ts_gfs = timeseries["gfs"]
-    ts_ecmwf = timeseries["ecmwf"]
-    ts_nws = timeseries["nws"]
-
     first_6Z, second_6Z = compute_6Z_times()
 
     fig = plt.figure(figsize=(16, 9))
     ax = plt.subplot(111)
 
-    label_hrrr = wind_speed_label("HRRR", ts_hrrr["time"], ts_hrrr["wind_speed"], first_6Z, second_6Z)
-    label_nam = wind_speed_label("NAM 5km", ts_nam["time"], ts_nam["wind_speed"], first_6Z, second_6Z)
-    label_gfs = wind_speed_label("GFS 0.25°", ts_gfs["time"], ts_gfs["wind_speed"], first_6Z, second_6Z)
-    label_ecmwf = wind_speed_label("ECMWF 0.4°", ts_ecmwf["time"], ts_ecmwf["wind_speed"], first_6Z, second_6Z)
-    label_nws = wind_speed_label("NWS", ts_nws["time"], ts_nws["wind_speed"], first_6Z, second_6Z)
+    label_hrrr = wind_speed_label("HRRR", timeseries["hrrr"]["wind_speed"], first_6Z, second_6Z)
+    label_nam = wind_speed_label("NAM 5km", timeseries["nam"]["wind_speed"], first_6Z, second_6Z)
+    label_gfs = wind_speed_label("GFS 0.25°", timeseries["gfs"]["wind_speed"], first_6Z, second_6Z)
+    label_ecmwf = wind_speed_label("ECMWF 0.4°", timeseries["ecmwf"]["wind_speed"], first_6Z, second_6Z)
+    label_nws = wind_speed_label("NWS", timeseries["nws"]["wind_speed"], first_6Z, second_6Z)
 
-    ax.plot(ts_hrrr["time"], ts_hrrr["wind_speed"], marker="o", label=label_hrrr)
-    ax.plot(ts_nam["time"], ts_nam["wind_speed"], marker="o", label=label_nam)
-    ax.plot(ts_gfs["time"], ts_gfs["wind_speed"], marker="o", label=label_gfs)
-    ax.plot(ts_ecmwf["time"], ts_ecmwf["wind_speed"], marker="o", label=label_ecmwf)
-    ax.plot(ts_nws["time"], ts_nws["wind_speed"], marker="o", label=label_nws)
+    ax.plot(timeseries["hrrr"]["wind_speed"], marker="o", label=label_hrrr)
+    ax.plot(timeseries["nam"]["wind_speed"], marker="o", label=label_nam)
+    ax.plot(timeseries["gfs"]["wind_speed"], marker="o", label=label_gfs)
+    ax.plot(timeseries["ecmwf"]["wind_speed"], marker="o", label=label_ecmwf)
+    ax.plot(timeseries["nws"]["wind_speed"], marker="o", label=label_nws)
 
     ax.axvline(x=first_6Z, ymin=0, ymax=1, color="red", linestyle="--")
     ax.axvline(x=second_6Z, ymin=0, ymax=1, color="red", linestyle="--")
@@ -161,12 +116,6 @@ def plot_wind_speed_forecast(timeseries, station, filepath):
     plt.savefig(filepath)
 
 def plot_precipitation_forecast(timeseries, station, filepath):
-    ts_hrrr = timeseries["hrrr"]
-    ts_nam = timeseries["nam"]
-    ts_gfs = timeseries["gfs"]
-    ts_ecmwf = timeseries["ecmwf"]
-    ts_nws = timeseries["nws"]
-
     first_6Z, second_6Z = compute_6Z_times()
 
     fig = plt.figure(figsize=(16, 9))
@@ -175,9 +124,9 @@ def plot_precipitation_forecast(timeseries, station, filepath):
     # label_hrrr = wind_speed_label("HRRR", ts_hrrr["time"], ts_hrrr["wind_speed"], first_6Z, second_6Z)
     # label_nam = wind_speed_label("NAM 5km", ts_nam["time"], ts_nam["wind_speed"], first_6Z, second_6Z)
 
-    ax.plot(ts_hrrr["time"], ts_hrrr["precipitation"], marker="o", label="HRRR")
-    ax.plot(ts_nam["time"], ts_nam["precipitation"], marker="o", label="NAM 5km")
-    ax.plot(ts_ecmwf["time"], ts_ecmwf["precipitation"], marker="o", label="ECMWF 0.4°")
+    ax.plot(timeseries["hrrr"]["precipitation"], marker="o", label="HRRR")
+    ax.plot(timeseries["nam"]["precipitation"], marker="o", label="NAM 5km")
+    ax.plot(timeseries["ecmwf"]["precipitation"], marker="o", label="ECMWF 0.4°")
 
     # plot cumsum of precip.
 
@@ -202,10 +151,8 @@ def plot_precipitation_forecast(timeseries, station, filepath):
     logging.info(f"Saving {filepath}...")
     plt.savefig(filepath)
 
-if __name__ == "__main__":
-    # Testing @ Boston
-    lat, lon = 42.362389, 288.908917
-    station = "KBOS"
+def generate_forecast(station, lat, lon):
+    now = pd.Timestamp.now()
 
     timeseries = {
         "hrrr": latest_hrrr_forecast_time_series(lat, lon),
@@ -215,6 +162,18 @@ if __name__ == "__main__":
         "nws": nws_forecast_time_series(lat, lon)
     }
 
-    plot_temperature_forecast(timeseries, station, "temperature_forecast.png")
-    plot_wind_speed_forecast(timeseries, station, "wind_speed_forecast.png")
-    plot_precipitation_forecast(timeseries, station, "precipitation_forecast.png")
+    nowstr = now.strftime("%Y-%m-%d_%H%M%S")
+    plot_temperature_forecast(timeseries, station, f"temperature_forecast_{station}_{nowstr}.png")
+    plot_wind_speed_forecast(timeseries, station, f"wind_speed_forecast_{station}_{nowstr}.png")
+    plot_precipitation_forecast(timeseries, station, f"precipitation_forecast_{station}_{nowstr}.png")
+
+
+if __name__ == "__main__":
+    # Testing @ Boston
+    # lat, lon = 42.362389, 288.908917
+    # station = "KBOS"
+
+    # Fort Myers
+    station = "KFMY"
+    lat, lon = 26.5866150, 278.1367531
+    generate_forecast(station, lat, lon)

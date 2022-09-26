@@ -57,6 +57,9 @@ def latest_hrrr_forecast_time_series(lat, lon):
 
 if __name__ == "__main__":
     # Testing @ Boston
-    lat_Boston, lon_Boston = 42.362389, 288.908917
-    timeseries = latest_hrrr_forecast_time_series(lat_Boston, lon_Boston)
+    # lat_Boston, lon_Boston = 42.362389, 288.908917
+    # timeseries = latest_hrrr_forecast_time_series(lat_Boston, lon_Boston)
+
+    lat_KFMY, lon_KFMY = 26.5866150, 278.1367531
+    timeseries = latest_hrrr_forecast_time_series(lat_KFMY, lon_KFMY)
     print(timeseries)

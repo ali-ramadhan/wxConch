@@ -1,5 +1,5 @@
-import os
 import logging.config
+import numpy as np
 import pandas as pd
 
 from datetime import datetime
@@ -105,3 +105,28 @@ def closest_latlon_coordinates(ds, target_lat, target_lon, verbose=True):
         logging.info(f"Closest coordinates: {closest_lat:.6f}°N, {closest_lon:.6f}°E @ (x={x}, y={y}) (Δ={distance/1000:.3f} km)")
 
     return x, y
+
+# Time series wrangling
+
+def timeseries_max(ts):
+    t = ts.index
+    S = ts.values
+
+    i_max = np.argmax(S)
+    t_max = t[i_max]
+    S_max = S[i_max]
+
+    return t_max, S_max
+
+def timeseries_min_and_max(ts):
+    t = ts.index
+    S = ts.values
+
+    i_min = np.argmin(S)
+    i_max = np.argmax(S)
+    t_min = t[i_min]
+    t_max = t[i_max]
+    S_min = S[i_min]
+    S_max = S[i_max]
+
+    return t_min, S_min, t_max, S_max

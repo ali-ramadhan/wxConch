@@ -7,8 +7,9 @@ def metar_timeseries(filepath):
     time_T = [pd.Timestamp(t) for t in df["valid"][inds_T]]
     temperature = df["tmpf"][inds_T].astype("float")
 
-    time_ws = [pd.Timestamp(t) for t in df["valid"]]
-    wind_speed = df["sknt"]
+    inds_ws = df["sknt"] != "M"  # Exclude missing wind speeds
+    time_ws = [pd.Timestamp(t) for t in df["valid"][inds_ws]]
+    wind_speed = df["sknt"][inds_ws].astype("float")
 
     inds_P = (df["p01i"] != "M") & (df["p01i"] != "T")  # Exclude missing ("M") and trace ("T") observations
     time_P = [pd.Timestamp(t) for t in df["valid"][inds_P]]
@@ -26,3 +27,8 @@ if __name__ == "__main__":
     # Testing @ Boston
     timeseries = metar_timeseries("KBOS_August_2022.csv")
     print(timeseries)
+    print(timeseries["wind_speed"])
+
+    timeseries = metar_timeseries("KFMY_2022_09.csv")
+    print(timeseries)
+    print(timeseries["wind_speed"])

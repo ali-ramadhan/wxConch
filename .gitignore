@@ -116,3 +116,6 @@ venv.bak/
 *.png
 *.gif
 
+# Artifacts
+*.pickle
+

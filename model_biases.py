@@ -222,8 +222,15 @@ def compute_model_biases(lat, lon, station, metar_filepath, verification_dates):
 
 if __name__ == "__main__":
     # Testing @ Boston
-    lat, lon = 42.362389, 288.908917
-    station = "KBOS"
-    verification_dates = pd.date_range(pd.Timestamp("2022-08-15"), pd.Timestamp("2022-08-22"))
-    metar_filepath = "KBOS_August_2022.csv"
+    # lat, lon = 42.362389, 288.908917
+    # station = "KBOS"
+    # verification_dates = pd.date_range(pd.Timestamp("2022-08-15"), pd.Timestamp("2022-08-22"))
+    # metar_filepath = "KBOS_August_2022.csv"
+    # compute_model_biases(lat, lon, station, metar_filepath, verification_dates)
+
+    # Fort Myers
+    station = "KFMY"
+    lat, lon = 26.5866150, 278.1367531
+    verification_dates = pd.date_range(pd.Timestamp("2022-09-10"), pd.Timestamp("2022-09-24"))
+    metar_filepath = "KFMY_2022_09.csv"
     compute_model_biases(lat, lon, station, metar_filepath, verification_dates)

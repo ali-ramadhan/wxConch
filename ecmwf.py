@@ -54,7 +54,7 @@ def ecmwf_forecast_time_series(forecast_time, target_lat, target_lon, hours=ECMW
     return timeseries
 
 def latest_ecmwf_forecast_time_series(lat, lon):
-    forecast_time = latest_complete_forecast_time(n=6, freq_hours=6, model="ecmwf", product="oper", forecast_hours=ECMWF_FORECAST_HOURS)
+    forecast_time = latest_complete_forecast_time(n=6, freq_hours=12, model="ecmwf", product="oper", forecast_hours=ECMWF_FORECAST_HOURS)
     return ecmwf_forecast_time_series(forecast_time, lat, lon)
 
 if __name__ == "__main__":
